@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.wellkillsheet"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1.1
-        versionName = "1.1"
+        versionCode = 2
+        versionName = "2.0"
     }
 
     buildTypes {
