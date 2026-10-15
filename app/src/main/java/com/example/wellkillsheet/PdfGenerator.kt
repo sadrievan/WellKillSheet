@@ -9,90 +9,230 @@ import java.io.OutputStream
 
 object PdfGenerator {
 
-    fun generate(
-        context: Context,
-        input: WellKillInput,
-        outputStream: OutputStream
-    ) {
+    private const val PAGE_WIDTH = 595   // A4, точки
+    private const val PAGE_HEIGHT = 842
+    private const val LEFT = 40f
+    private const val RIGHT = 555f
+    private const val LINE = 16f
+
+    fun generate(context: Context, input: WellKillInput, outputStream: OutputStream) {
         val document = PdfDocument()
-        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
-        val page = document.startPage(pageInfo)
-        val canvas: Canvas = page.canvas
 
         val titlePaint = Paint().apply {
             color = Color.BLACK
-            textSize = 18f
+            textSize = 16f
             isAntiAlias = true
             isFakeBoldText = true
         }
         val textPaint = Paint().apply {
             color = Color.BLACK
-            textSize = 12f
+            textSize = 11f
             isAntiAlias = true
         }
+        val boldPaint = Paint().apply {
+            color = Color.BLACK
+            textSize = 11f
+            isAntiAlias = true
+            isFakeBoldText = true
+        }
         val linePaint = Paint().apply {
-            color = Color.LTGRAY
-            strokeWidth = 1f
+            color = Color.DKGRAY
+            strokeWidth = 0.7f
         }
 
-        val left = 40f
-        var y = 60f
-        val lineHeight = 22f
+        // ================= Страница 1 =================
+        var page = document.startPage(
+            PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create()
+        )
+        var canvas = page.canvas
+        var y = 50f
 
-        canvas.drawText("WELL KILL SHEET", left, y, titlePaint)
-        y += lineHeight * 1.5f
-        canvas.drawLine(left, y, 555f, y, linePaint)
-        y += lineHeight
+        canvas.drawText("ЛИСТ ГЛУШЕНИЯ", LEFT, y, titlePaint)
+        y += LINE * 1.8f
+        canvas.drawText("Дата: ${input.date}", LEFT, y, textPaint)
+        canvas.drawText("ФИО: ${input.engineer}", LEFT + 250f, y, textPaint)
+        y += LINE * 1.5f
+        canvas.drawLine(LEFT, y, RIGHT, y, linePaint)
+        y += LINE
 
-        fun section(title: String, rows: List<Pair<String, String>>) {
-            canvas.drawText(title, left, y, titlePaint.apply { textSize = 13f })
-            y += lineHeight
-            for ((label, value) in rows) {
-                canvas.drawText(label, left, y, textPaint)
-                canvas.drawText(value, left + 320f, y, textPaint)
-                y += lineHeight
-            }
-            y += 8f
-        }
+        // --- Блок 1 ---
+        canvas.drawText("Данные о прочности пород", LEFT, y, boldPaint)
+        y += LINE
+        canvas.drawText("(A) Давление на устье при испытании, МПа", LEFT, y, textPaint)
+        canvas.drawText("%.2f".format(input.testPressureA), RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("(B) Плотность раствора при испытании, кг/л", LEFT, y, textPaint)
+        canvas.drawText("%.2f".format(input.testDensityB), RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("ГСВ до башмака, м", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(input.casingShoeTVD), RIGHT - 60f, y, textPaint)
+        y += LINE
 
-        section("1. INPUT DATA", listOf(
-            "Well Depth (MD), m" to "%.1f".format(input.wellDepthMD),
-            "Well Depth (TVD), m" to "%.1f".format(input.wellDepthTVD),
-            "Casing Shoe (TVD), m" to "%.1f".format(input.casingShoeTVD),
-            "Current Mud Density, kg/l" to "%.2f".format(input.currentMudDensity),
-            "SIDPP, bar" to "%.1f".format(input.sidpp),
-            "SICP, bar" to "%.1f".format(input.sicp),
-            "Pump Output, l/stroke" to "%.2f".format(input.pumpOutput),
-            "Slow Pump Rate, spm" to "%.0f".format(input.slowPumpRate),
-            "Slow Circulating Pressure, bar" to "%.1f".format(input.slowCirculatingPressure),
-            "Drill Pipe Capacity, l/m" to "%.4f".format(input.drillPipeCapacity),
-            "Annulus Capacity, l/m" to "%.4f".format(input.drillPipeAnnulusCapacity)
-        ))
+        canvas.drawText("(C) Макс. доп. плотность, кг/л", LEFT, y, boldPaint)
+        canvas.drawText("%.2f".format(WellKillCalculator.maxAllowableDensity(input)),
+            RIGHT - 60f, y, boldPaint)
+        y += LINE
+        canvas.drawText("МДУДКП, МПа", LEFT, y, boldPaint)
+        canvas.drawText("%.2f".format(WellKillCalculator.mdudkp(input)),
+            RIGHT - 60f, y, boldPaint)
+        y += LINE * 1.5f
+        canvas.drawLine(LEFT, y, RIGHT, y, linePaint)
+        y += LINE
 
-        val killDensity = WellKillCalculator.killMudDensity(input)
-        val icp = WellKillCalculator.initialCirculatingPressure(input)
-        val fcp = WellKillCalculator.finalCirculatingPressure(input)
-        val maasp = WellKillCalculator.maasp(input)
-        val strokesToBit = WellKillCalculator.strokesToBit(input)
-        val strokesToSurface = WellKillCalculator.strokesBitToSurface(input)
-        val totalStrokes = WellKillCalculator.totalStrokes(input)
-        val circTime = WellKillCalculator.circulationTimeMinutes(totalStrokes, input.slowPumpRate)
+        // --- Блок 2: Текущие данные ---
+        canvas.drawText("Текущие данные по скважине", LEFT, y, boldPaint)
+        y += LINE
+        canvas.drawText("Глубина по стволу (MD), м", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(input.wellDepthMD), RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("Глубина по вертикали (TVD), м", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(input.wellDepthTVD), RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("Плотность раствора в скважине, кг/л", LEFT, y, textPaint)
+        canvas.drawText("%.2f".format(input.currentMudDensity), RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("Длина открытого ствола, м", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(input.openHoleLength), RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("Длина обсадной части, м", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(input.casedHoleLength), RIGHT - 60f, y, textPaint)
+        y += LINE * 1.5f
+        canvas.drawLine(LEFT, y, RIGHT, y, linePaint)
+        y += LINE
 
-        section("2. CALCULATED VALUES", listOf(
-            "Kill Mud Density, kg/l" to "%.2f".format(killDensity),
-            "Initial Circulating Pressure, bar" to "%.1f".format(icp),
-            "Final Circulating Pressure, bar" to "%.1f".format(fcp),
-            "MAASP, bar" to "%.1f".format(maasp),
-            "Strokes to Bit" to "%.0f".format(strokesToBit),
-            "Strokes Bit to Surface" to "%.0f".format(strokesToSurface),
-            "Total Strokes" to "%.0f".format(totalStrokes),
-            "Circulation Time, min" to "%.0f".format(circTime)
-        ))
-
-        canvas.drawText("Signature: ____________________", left, y + 40f, textPaint)
-        canvas.drawText("Date: ____________________", left + 320f, y + 40f, textPaint)
+        // --- Блок 3: Объёмы ---
+        canvas.drawText("Объёмы", LEFT, y, boldPaint)
+        y += LINE
+        canvas.drawText("(D) Объём бурильной колонны, л", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(WellKillCalculator.drillPipeVolume(input)),
+            RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("(F) Открытый ствол, л", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(WellKillCalculator.openHoleAnnulusVolume(input)),
+            RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("(G) Обсадная часть, л", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(WellKillCalculator.casedHoleAnnulusVolume(input)),
+            RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("(H) Объём кольцевого пространства, л", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(WellKillCalculator.totalAnnulusVolume(input)),
+            RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("(J) Объём наземной обвязки, л", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(input.surfaceVolumeJ), RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("(I) Объём в скважине, л", LEFT, y, boldPaint)
+        canvas.drawText("%.1f".format(WellKillCalculator.totalWellVolume(input)),
+            RIGHT - 60f, y, boldPaint)
+        y += LINE
+        canvas.drawText("(I+J) Общий объём, л", LEFT, y, boldPaint)
+        canvas.drawText("%.1f".format(WellKillCalculator.totalVolumeWithSurface(input)),
+            RIGHT - 60f, y, boldPaint)
+        y += LINE
+        canvas.drawText("(E) Ходов до долота", LEFT, y, boldPaint)
+        canvas.drawText("%.0f".format(WellKillCalculator.strokesToBit(input)),
+            RIGHT - 60f, y, boldPaint)
+        y += LINE
 
         document.finishPage(page)
+
+        // ================= Страница 2 =================
+        page = document.startPage(
+            PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 2).create()
+        )
+        canvas = page.canvas
+        y = 50f
+
+        canvas.drawText("ЛИСТ ГЛУШЕНИЯ (продолжение)", LEFT, y, titlePaint)
+        y += LINE * 1.8f
+        canvas.drawText("Дата: ${input.date}", LEFT, y, textPaint)
+        canvas.drawText("ФИО: ${input.engineer}", LEFT + 250f, y, textPaint)
+        y += LINE * 1.5f
+        canvas.drawLine(LEFT, y, RIGHT, y, linePaint)
+        y += LINE
+
+        // --- Данные о притоке ---
+        canvas.drawText("Данные о притоке", LEFT, y, boldPaint)
+        y += LINE
+        canvas.drawText("SIDPP (давление стабилизации в БТ), МПа", LEFT, y, textPaint)
+        canvas.drawText("%.2f".format(input.sidpp), RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("SICP (давление стабилизации в КП), МПа", LEFT, y, textPaint)
+        canvas.drawText("%.2f".format(input.sicp), RIGHT - 60f, y, textPaint)
+        y += LINE
+        canvas.drawText("Объём притока, л", LEFT, y, textPaint)
+        canvas.drawText("%.1f".format(input.influxVolume), RIGHT - 60f, y, textPaint)
+        y += LINE * 1.5f
+        canvas.drawLine(LEFT, y, RIGHT, y, linePaint)
+        y += LINE
+
+        // --- Расчёты ---
+        canvas.drawText("Плотность раствора глушения", LEFT, y, boldPaint)
+        y += LINE
+        canvas.drawText(
+            "ρ_скв + SIDPP / (TVD × 0.00981) = %.2f кг/л".format(
+                WellKillCalculator.killMudDensity(input)),
+            LEFT + 10f, y, textPaint)
+        y += LINE * 1.5f
+
+        canvas.drawText("Начальное давление циркуляции (Рнач)", LEFT, y, boldPaint)
+        y += LINE
+        canvas.drawText(
+            "Давление прокачки + SIDPP = %.2f МПа".format(
+                WellKillCalculator.initialCirculatingPressure(input)),
+            LEFT + 10f, y, textPaint)
+        y += LINE * 1.5f
+
+        canvas.drawText("Конечное давление циркуляции (Ркон)", LEFT, y, boldPaint)
+        y += LINE
+        canvas.drawText(
+            "(ρ_глуш / ρ_скв) × Давление прокачки = %.2f МПа".format(
+                WellKillCalculator.finalCirculatingPressure(input)),
+            LEFT + 10f, y, textPaint)
+        y += LINE * 1.5f
+
+        canvas.drawText("(К) = Рнач − Ркон", LEFT, y, boldPaint)
+        canvas.drawText("%.2f МПа".format(WellKillCalculator.pressureDifferenceK(input)),
+            RIGHT - 100f, y, boldPaint)
+        y += LINE
+        canvas.drawText("Снижение на 100 ходов = (К) × 100 / (E)", LEFT, y, boldPaint)
+        canvas.drawText("%.3f МПа".format(
+            WellKillCalculator.pressureDropPer100Strokes(input)),
+            RIGHT - 100f, y, boldPaint)
+        y += LINE * 1.5f
+        canvas.drawLine(LEFT, y, RIGHT, y, linePaint)
+        y += LINE
+
+        // --- Таблица снижения давления ---
+        canvas.drawText("График снижения давления", LEFT, y, boldPaint)
+        y += LINE
+
+        // Заголовок таблицы
+        canvas.drawText("Ходов", LEFT, y, boldPaint)
+        canvas.drawText("Давление, МПа", LEFT + 200f, y, boldPaint)
+        y += LINE * 0.8f
+        canvas.drawLine(LEFT, y, RIGHT, y, linePaint)
+        y += LINE * 0.8f
+
+        val schedule = WellKillCalculator.pressureSchedule(input)
+        val maxRowsPerPage = 40
+        for ((idx, row) in schedule.withIndex()) {
+            if (idx >= maxRowsPerPage) break
+            canvas.drawText(row.strokes.toString(), LEFT, y, textPaint)
+            canvas.drawText("%.2f".format(row.pressure), LEFT + 200f, y, textPaint)
+            y += LINE
+        }
+
+        y += LINE * 1.5f
+        canvas.drawLine(LEFT, y, RIGHT, y, linePaint)
+        y += LINE
+        canvas.drawText("Подпись бурильщика: ______________________", LEFT, y, textPaint)
+        y += LINE * 2f
+        canvas.drawText("Подпись инженера: ______________________", LEFT, y, textPaint)
+
+        document.finishPage(page)
+
         document.writeTo(outputStream)
         document.close()
     }
