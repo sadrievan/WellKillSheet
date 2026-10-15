@@ -1,52 +1,55 @@
 package com.example.wellkillsheet
 
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
 data class WellKillInput(
     // Шапка
-    val date: String = "",
+    val date: String = todayDate(),
     val engineer: String = "",
 
     // Данные о прочности пород
     val testPressureA: Double = 0.0,        // (A) МПа
     val testDensityB: Double = 0.0,         // (B) кг/л
-    val casingShoeTVD: Double = 0.0,        // ГСВ до башмака, м
+    val casingShoeTVD: Double = 0.0,        // Глубина башмака по вертикали, м
 
     // Текущие данные по скважине
-    val wellDepthMD: Double = 0.0,          // м
-    val wellDepthTVD: Double = 0.0,         // м
+    val casingShoeMD: Double = 0.0,         // Глубина башмака по стволу, м
+    val wellDepthMD: Double = 0.0,          // Глубина скважины по стволу, м
+    val wellDepthTVD: Double = 0.0,         // Глубина скважины по вертикали, м
     val currentMudDensity: Double = 0.0,    // кг/л
-    val openHoleLength: Double = 0.0,       // м
-    val casedHoleLength: Double = 0.0,      // м
 
     // Бурильная колонна
-    val bhaLength: Double = 0.0,            // КНБК длина, м
-    val bhaCapacity: Double = 0.0,          // КНБК уд. объём, л/м
-    val hwdpLength: Double = 0.0,           // ТБТ длина, м
-    val hwdpCapacity: Double = 0.0,         // ТБТ уд. объём, л/м
-    val dpLength: Double = 0.0,             // БТ длина, м
-    val dpCapacity: Double = 0.0,           // БТ уд. объём, л/м
+    val bhaLength: Double = 0.0,
+    val bhaCapacity: Double = 0.0,
+    val hwdpLength: Double = 0.0,
+    val hwdpCapacity: Double = 0.0,
+    val dpLength: Double = 0.0,
+    val dpCapacity: Double = 0.0,
 
     // Кольцевое пространство
-    val openHoleAnnulusCapacity: Double = 0.0,  // л/м
-    val casedHoleAnnulusCapacity: Double = 0.0, // л/м
+    val openHoleAnnulusCapacity: Double = 0.0,
+    val casedHoleAnnulusCapacity: Double = 0.0,
 
     // Наземная обвязка
-    val surfaceVolumeJ: Double = 0.0,       // (J) л
+    val surfaceVolumeJ: Double = 0.0,
 
-    // Насосы
-    val pump1Rate: Double = 0.0,            // ход/мин
-    val pump1Output: Double = 0.0,          // л/ход
-    val pump2Rate: Double = 0.0,            // ход/мин
-    val pump2Output: Double = 0.0,          // л/ход
-    val activePump: Int = 1,                // 1 или 2
-
-    // Давление прокачки
-    val pumpPressure: Double = 0.0,         // МПа
+    // Насос (один)
+    val pumpRate: Double = 0.0,             // Скорость насоса при тесте на МХ, ход/мин
+    val pumpOutput: Double = 0.0,           // Удельный объём, л/ход
+    val pumpPressure: Double = 0.0,         // Давление прокачки, МПа
 
     // Приток
-    val sidpp: Double = 0.0,                // МПа
-    val sicp: Double = 0.0,                 // МПа
-    val influxVolume: Double = 0.0          // л
+    val sidpp: Double = 0.0,                // Давление стабилизации в трубах, МПа
+    val sicp: Double = 0.0,                 // Давление стабилизации в КП, МПа
+    val influxVolume: Double = 0.0          // Объём притока, л
 )
+
+fun todayDate(): String {
+    val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+    return sdf.format(Calendar.getInstance().time)
+}
 
 object WellKillCalculator {
 
@@ -54,7 +57,7 @@ object WellKillCalculator {
 
     // ---- Блок 1. Прочность пород ----
 
-    // (C) Максимально допустимая плотность раствора, кг/л
+    // (C) Максимально допустимая плотность раствора, кг/л (по TVD башмака)
     fun maxAllowableDensity(input: WellKillInput): Double {
         if (input.casingShoeTVD <= 0.0) return 0.0
         return input.testPressureA / (input.casingShoeTVD * CONST) + input.testDensityB
@@ -66,20 +69,34 @@ object WellKillCalculator {
         return (c - input.currentMudDensity) * input.casingShoeTVD * CONST
     }
 
-    // ---- Блок 2. Объёмы ----
+    // ---- Блок 2. Длины (авто) ----
+
+    // Длина открытого ствола = MD_скв − MD_башмак
+    fun openHoleLength(input: WellKillInput): Double {
+        return (input.wellDepthMD - input.casingShoeMD).coerceAtLeast(0.0)
+    }
+
+    // Длина обсадной части = MD_башмак
+    fun casedHoleLength(input: WellKillInput): Double {
+        return input.casingShoeMD
+    }
+
+    // ---- Блок 3. Объёмы ----
+
+    fun bhaVolume(input: WellKillInput) = input.bhaCapacity * input.bhaLength
+    fun hwdpVolume(input: WellKillInput) = input.hwdpCapacity * input.hwdpLength
+    fun dpVolume(input: WellKillInput) = input.dpCapacity * input.dpLength
 
     fun drillPipeVolume(input: WellKillInput): Double {
-        return input.bhaCapacity * input.bhaLength +
-               input.hwdpCapacity * input.hwdpLength +
-               input.dpCapacity * input.dpLength
+        return bhaVolume(input) + hwdpVolume(input) + dpVolume(input)
     }
 
     fun openHoleAnnulusVolume(input: WellKillInput): Double {
-        return input.openHoleAnnulusCapacity * input.openHoleLength
+        return input.openHoleAnnulusCapacity * openHoleLength(input)
     }
 
     fun casedHoleAnnulusVolume(input: WellKillInput): Double {
-        return input.casedHoleAnnulusCapacity * input.casedHoleLength
+        return input.casedHoleAnnulusCapacity * casedHoleLength(input)
     }
 
     fun totalAnnulusVolume(input: WellKillInput): Double {
@@ -94,44 +111,34 @@ object WellKillCalculator {
         return totalWellVolume(input) + input.surfaceVolumeJ
     }
 
-    // ---- Блок 3. Насос ----
+    // ---- Блок 4. Насос ----
 
-    fun activePumpOutput(input: WellKillInput): Double {
-        return if (input.activePump == 2) input.pump2Output else input.pump1Output
-    }
-
-    fun activePumpRate(input: WellKillInput): Double {
-        return if (input.activePump == 2) input.pump2Rate else input.pump1Rate
-    }
-
-    // (E) Ходов насоса на прокачку объёма БК до долота
+    // (E) Ходов до долота
     fun strokesToBit(input: WellKillInput): Double {
-        val q = activePumpOutput(input)
-        if (q <= 0.0) return 0.0
-        return drillPipeVolume(input) / q
+        if (input.pumpOutput <= 0.0) return 0.0
+        return drillPipeVolume(input) / input.pumpOutput
     }
 
-    // Ходов на полную циркуляцию (I + J)
+    // Ходов на полную циркуляцию
     fun strokesFullCirculation(input: WellKillInput): Double {
-        val q = activePumpOutput(input)
-        if (q <= 0.0) return 0.0
-        return totalVolumeWithSurface(input) / q
+        if (input.pumpOutput <= 0.0) return 0.0
+        return totalVolumeWithSurface(input) / input.pumpOutput
     }
 
-    // ---- Блок 4. Приток и давления ----
+    // ---- Блок 5. Приток и давления ----
 
-    // Плотность раствора глушения, кг/л
+    // Плотность раствора глушения, кг/л (по TVD скважины)
     fun killMudDensity(input: WellKillInput): Double {
         if (input.wellDepthTVD <= 0.0) return 0.0
         return input.currentMudDensity + input.sidpp / (input.wellDepthTVD * CONST)
     }
 
-    // Начальное давление циркуляции, МПа
+    // Рнач — начальное давление циркуляции, МПа
     fun initialCirculatingPressure(input: WellKillInput): Double {
         return input.pumpPressure + input.sidpp
     }
 
-    // Конечное давление циркуляции, МПа
+    // Ркон — конечное давление циркуляции, МПа
     fun finalCirculatingPressure(input: WellKillInput): Double {
         if (input.currentMudDensity <= 0.0) return 0.0
         val kill = killMudDensity(input)
@@ -150,29 +157,35 @@ object WellKillCalculator {
         return pressureDifferenceK(input) * 100.0 / e
     }
 
-    // ---- Блок 5. Таблица снижения давления ----
+    // ---- Блок 6. Таблица графика ----
 
     data class PressureRow(val strokes: Int, val pressure: Double)
 
-    // Строит таблицу от Рнач до Ркон с шагом 100 ходов
-    fun pressureSchedule(input: WellKillInput): List<PressureRow> {
+    // Строит таблицу с авто-шагом, чтобы влезло в maxRows строк
+    fun pressureSchedule(input: WellKillInput, maxRows: Int = 40): List<PressureRow> {
         val e = strokesToBit(input)
         if (e <= 0.0) return emptyList()
 
         val pStart = initialCirculatingPressure(input)
         val pEnd = finalCirculatingPressure(input)
-        val dropPer100 = pressureDropPer100Strokes(input)
+
+        // Подбираем шаг: 100, 200, 300, ... такой, чтобы строк было <= maxRows
+        var step = 100
+        while ((e / step).toInt() + 2 > maxRows && step < 10000) {
+            step += 100
+        }
 
         val rows = mutableListOf<PressureRow>()
         rows.add(PressureRow(0, pStart))
 
-        var strokes = 100
+        var strokes = step
         while (strokes < e.toInt()) {
-            rows.add(PressureRow(strokes, pStart - dropPer100 * (strokes / 100.0)))
-            strokes += 100
+            val drop = pressureDifferenceK(input) * strokes / e
+            rows.add(PressureRow(strokes, pStart - drop))
+            strokes += step
         }
 
-        // финальная строка — фактическое (E) и Ркон
+        // финальная строка
         rows.add(PressureRow(e.toInt(), pEnd))
         return rows
     }
