@@ -54,8 +54,8 @@ fun WellKillScreen() {
 
             // ---------- Шапка ----------
             SectionTitle("Лист глушения")
-            TextFieldValue("Дата", input.date) { input = input.copy(date = it) }
-            TextFieldValue("ФИО", input.engineer) { input = input.copy(engineer = it) }
+            TextInput("Дата", input.date) { input = input.copy(date = it) }
+            TextInput("ФИО", input.engineer) { input = input.copy(engineer = it) }
 
             // ---------- Данные о прочности пород ----------
             SectionTitle("Данные о прочности пород")
@@ -65,32 +65,33 @@ fun WellKillScreen() {
             NumberField("(B) Плотность раствора при испытании, кг/л", input.testDensityB) {
                 input = input.copy(testDensityB = it)
             }
-            NumberField("ГСВ до башмака, м", input.casingShoeTVD) {
+            NumberField("Глубина башмака по вертикали (TVD), м", input.casingShoeTVD) {
                 input = input.copy(casingShoeTVD = it)
             }
 
             // ---------- Текущие данные по скважине ----------
             SectionTitle("Текущие данные по скважине")
-            NumberField("Глубина по стволу (MD), м", input.wellDepthMD) {
+            NumberField("Глубина башмака по стволу (MD), м", input.casingShoeMD) {
+                input = input.copy(casingShoeMD = it)
+            }
+            NumberField("Глубина скважины по стволу (MD), м", input.wellDepthMD) {
                 input = input.copy(wellDepthMD = it)
             }
-            NumberField("Глубина по вертикали (TVD), м", input.wellDepthTVD) {
+            NumberField("Глубина скважины по вертикали (TVD), м", input.wellDepthTVD) {
                 input = input.copy(wellDepthTVD = it)
             }
             NumberField("Плотность раствора в скважине, кг/л", input.currentMudDensity) {
                 input = input.copy(currentMudDensity = it)
-            }
-            NumberField("Длина открытого ствола, м", input.openHoleLength) {
-                input = input.copy(openHoleLength = it)
-            }
-            NumberField("Длина обсадной части, м", input.casedHoleLength) {
-                input = input.copy(casedHoleLength = it)
             }
 
             ResultRow("(C) Макс. доп. плотность, кг/л",
                 "%.2f".format(WellKillCalculator.maxAllowableDensity(input)))
             ResultRow("МДУДКП, МПа",
                 "%.2f".format(WellKillCalculator.mdudkp(input)))
+            ResultRow("Длина открытого ствола (авто), м",
+                "%.1f".format(WellKillCalculator.openHoleLength(input)))
+            ResultRow("Длина обсадной части (авто), м",
+                "%.1f".format(WellKillCalculator.casedHoleLength(input)))
 
             // ---------- Бурильная колонна ----------
             SectionTitle("Бурильная колонна")
@@ -129,34 +130,13 @@ fun WellKillScreen() {
             ResultRow("(I+J) Общий объём, л",
                 "%.1f".format(WellKillCalculator.totalVolumeWithSurface(input)))
 
-            // ---------- Насосы ----------
-            SectionTitle("Насосы")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Рабочий насос:", modifier = Modifier.weight(1f))
-                RadioButton(
-                    selected = input.activePump == 1,
-                    onClick = { input = input.copy(activePump = 1) }
-                )
-                Text("1")
-                Spacer(Modifier.width(12.dp))
-                RadioButton(
-                    selected = input.activePump == 2,
-                    onClick = { input = input.copy(activePump = 2) }
-                )
-                Text("2")
+            // ---------- Насос ----------
+            SectionTitle("Насос")
+            NumberField("Скорость насоса при тесте на МХ, ход/мин", input.pumpRate) {
+                input = input.copy(pumpRate = it)
             }
-
-            NumberField("Насос 1: скорость, ход/мин", input.pump1Rate) {
-                input = input.copy(pump1Rate = it)
-            }
-            NumberField("Насос 1: уд. объём, л/ход", input.pump1Output) {
-                input = input.copy(pump1Output = it)
-            }
-            NumberField("Насос 2: скорость, ход/мин", input.pump2Rate) {
-                input = input.copy(pump2Rate = it)
-            }
-            NumberField("Насос 2: уд. объём, л/ход", input.pump2Output) {
-                input = input.copy(pump2Output = it)
+            NumberField("Удельный объём насоса, л/ход", input.pumpOutput) {
+                input = input.copy(pumpOutput = it)
             }
             NumberField("Давление прокачки, МПа", input.pumpPressure) {
                 input = input.copy(pumpPressure = it)
@@ -169,10 +149,10 @@ fun WellKillScreen() {
 
             // ---------- Приток ----------
             SectionTitle("Данные о притоке")
-            NumberField("SIDPP (стаб. в БТ), МПа", input.sidpp) {
+            NumberField("Давление стабилизации в трубах, МПа", input.sidpp) {
                 input = input.copy(sidpp = it)
             }
-            NumberField("SICP (стаб. в КП), МПа", input.sicp) {
+            NumberField("Давление стабилизации в кольцевом пространстве, МПа", input.sicp) {
                 input = input.copy(sicp = it)
             }
             NumberField("Объём притока, л", input.influxVolume) {
@@ -192,11 +172,11 @@ fun WellKillScreen() {
             ResultRow("Снижение, МПа на 100 ходов",
                 "%.3f".format(WellKillCalculator.pressureDropPer100Strokes(input)))
 
-            // ---------- Таблица снижения давления ----------
+            // ---------- Таблица ----------
             SectionTitle("График снижения давления")
             val schedule = WellKillCalculator.pressureSchedule(input)
             if (schedule.isEmpty()) {
-                Text("Введите данные для расчёта (E) ходов.",
+                Text("Введите данные для расчёта.",
                     style = MaterialTheme.typography.bodyMedium)
             } else {
                 Card(modifier = Modifier.fillMaxWidth()) {
@@ -235,8 +215,6 @@ fun WellKillScreen() {
     }
 }
 
-// ---------- Вспомогательные Composable ----------
-
 @Composable
 fun SectionTitle(text: String) {
     Spacer(Modifier.height(12.dp))
@@ -265,7 +243,7 @@ fun NumberField(label: String, value: Double, onChange: (Double) -> Unit) {
 }
 
 @Composable
-fun TextFieldValue(label: String, value: String, onChange: (String) -> Unit) {
+fun TextInput(label: String, value: String, onChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
