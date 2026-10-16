@@ -28,18 +28,18 @@ data class WellKillInput(
     val currentMudDensity: Double = 0.0,
 
     // Бурильная колонна
-    val bhaLength: Double = 0.0,      // КНБК (УБТ): длина, м
-    val bhaCapacity: Double = 0.0,    // КНБК: уд. объём, л/м
-    val hwdpLength: Double = 0.0,     // ТБТ: длина, м
-    val hwdpCapacity: Double = 0.0,   // ТБТ: уд. объём, л/м
-    val dpCapacity: Double = 0.0,     // БТ: уд. объём, л/м (длина — авто)
+    val bhaLength: Double = 0.0,
+    val bhaCapacity: Double = 0.0,
+    val hwdpLength: Double = 0.0,
+    val hwdpCapacity: Double = 0.0,
+    val dpCapacity: Double = 0.0,
 
-    // Кольцевое пространство (НОВАЯ ЛОГИКА)
-    val osBhaCapacity: Double = 0.0,       // Уд. объём ОС для КНБК, л/м
-    val osHwdpBiCapacity: Double = 0.0,    // Уд. объём ОС для ТБТ/БИ, л/м
-    val okBiCapacity: Double = 0.0,        // Уд. объём ОК для БИ, л/м
-    val bhaInOsLength: Double = 0.0,       // Длина КНБК в ОС, м
-    val hwdpInOsLength: Double = 0.0,      // Длина ТБТ в ОС, м
+    // Кольцевое пространство
+    val osBhaCapacity: Double = 0.0,
+    val osHwdpBiCapacity: Double = 0.0,
+    val okBiCapacity: Double = 0.0,
+    val bhaInOsLength: Double = 0.0,
+    val hwdpInOsLength: Double = 0.0,
 
     // Наземная обвязка
     val surfaceVolumeJ: Double = 0.0,
@@ -125,7 +125,6 @@ object WellKillCalculator {
 
     // ============ БЛОК 2: ДЛИНЫ (АВТО) ============
 
-    // L_БТ = MD_скв − L_КНБК − L_ТБТ
     fun dpLength(input: WellKillInput): Double {
         return (input.wellDepthMD - input.bhaLength - input.hwdpLength).coerceAtLeast(0.0)
     }
@@ -140,7 +139,6 @@ object WellKillCalculator {
 
     // ============ БЛОК 3: ОБЪЁМЫ ============
 
-    // Внутренние объёмы БК
     fun bhaVolumeRaw(input: WellKillInput) = input.bhaCapacity * input.bhaLength
     fun hwdpVolumeRaw(input: WellKillInput) = input.hwdpCapacity * input.hwdpLength
     fun dpVolumeRaw(input: WellKillInput) = input.dpCapacity * dpLength(input)
@@ -150,17 +148,19 @@ object WellKillCalculator {
         return roundUpInt(raw)
     }
 
-    // Новая логика КП
     // F = F1 (КНБК в ОС) + F2 (ТБТ/БИ в ОС)
+    // F2 = (Длина ОС − L_КНБК_в_ОС) × q_ОС_ТБТ/БИ
     fun openHoleAnnulusVolume(input: WellKillInput): Int {
         val f1 = input.bhaInOsLength * input.osBhaCapacity
-        val f2 = input.hwdpInOsLength * input.osHwdpBiCapacity
+        val osLength = openHoleLength(input)
+        val f2 = (osLength - input.bhaInOsLength) * input.osHwdpBiCapacity
         return roundUpInt(f1 + f2)
     }
 
-    // G = L_БТ × q_ОК_БИ
+    // G = MD_башмака × q_ОК_БИ
+    // (в обсадной колонне всегда только БИ, тянется от устья до башмака)
     fun casedHoleAnnulusVolume(input: WellKillInput): Int {
-        val raw = dpLength(input) * input.okBiCapacity
+        val raw = input.casingShoeMD * input.okBiCapacity
         return roundUpInt(raw)
     }
 
