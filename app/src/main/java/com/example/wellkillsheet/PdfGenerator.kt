@@ -79,7 +79,7 @@ object PdfGenerator {
         canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, linePaint)
         y += 12f
 
-        // ===== Схема скважины =====
+        // Схема скважины
         val schemeLeft = MARGIN
         val schemeTop = y
         val schemeWidth = 130f
@@ -87,7 +87,7 @@ object PdfGenerator {
         drawWellScheme(canvas, schemeLeft, schemeTop, schemeWidth, schemeHeight,
             linePaint, boxPaint, textPaint)
 
-        // ===== Правая колонка =====
+        // Правая колонка
         val rightX = schemeLeft + schemeWidth + 15f
         val rightWidth = PAGE_WIDTH - MARGIN - rightX
         var rightY = schemeTop
@@ -153,7 +153,7 @@ object PdfGenerator {
 
         y = maxOf(schemeTop + schemeHeight, rightY) + 15f
 
-        // ===== Объёмы =====
+        // Объёмы
         y = drawSectionHeader(canvas, "Объёмы",
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, subTitlePaint, fillGrayPaint, linePaint)
 
@@ -175,7 +175,6 @@ object PdfGenerator {
             "%d л".format(WellKillCalculator.drillPipeVolume(input)),
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, boldPaint, boldPaint, linePaint)
 
-        // Кольцевое пространство — новая логика
         y = drawTwoColumnRow(canvas,
             "(F1) КНБК в ОС: %.0f м × %.4f л/м".format(
                 input.bhaInOsLength, input.osBhaCapacity),
@@ -183,10 +182,12 @@ object PdfGenerator {
                 input.bhaInOsLength * input.osBhaCapacity)),
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, textPaint, boldPaint, linePaint)
         y = drawTwoColumnRow(canvas,
-            "(F2) ТБТ в ОС: %.0f м × %.4f л/м".format(
-                input.hwdpInOsLength, input.osHwdpBiCapacity),
+            "(F2) ТБТ/БИ в ОС: %.0f м × %.4f л/м".format(
+                WellKillCalculator.openHoleLength(input) - input.bhaInOsLength,
+                input.osHwdpBiCapacity),
             "%d л".format(WellKillCalculator.roundUpInt(
-                input.hwdpInOsLength * input.osHwdpBiCapacity)),
+                (WellKillCalculator.openHoleLength(input) - input.bhaInOsLength) *
+                input.osHwdpBiCapacity)),
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, textPaint, boldPaint, linePaint)
         y = drawTwoColumnRow(canvas,
             "(F) Объём КП в открытом стволе",
@@ -194,7 +195,7 @@ object PdfGenerator {
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, boldPaint, boldPaint, linePaint)
         y = drawTwoColumnRow(canvas,
             "(G) Объём КП в обсадной колонне: %.0f м × %.4f л/м".format(
-                WellKillCalculator.dpLength(input), input.okBiCapacity),
+                input.casingShoeMD, input.okBiCapacity),
             "%d л".format(WellKillCalculator.casedHoleAnnulusVolume(input)),
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, textPaint, boldPaint, linePaint)
         y = drawTwoColumnRow(canvas,
@@ -215,7 +216,7 @@ object PdfGenerator {
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, boldPaint, boldPaint, linePaint)
         y += 8f
 
-        // ===== Насос =====
+        // Насос
         y = drawSectionHeader(canvas, "Насос",
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, subTitlePaint, fillGrayPaint, linePaint)
         y = drawTwoColumnRow(canvas,
@@ -242,7 +243,7 @@ object PdfGenerator {
         canvas.drawText("Подпись инженера: ______________________", MARGIN + 280f, y, textPaint)
 
         document.finishPage(page)
-        
+
         // ==============================
         //        СТРАНИЦА 2
         // ==============================
@@ -260,7 +261,7 @@ object PdfGenerator {
         canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, linePaint)
         y += 12f
 
-        // ===== Приток =====
+        // Приток
         y = drawSectionHeader(canvas, "Данные о притоке",
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, subTitlePaint, fillGrayPaint, linePaint)
         y = drawTwoColumnRow(canvas,
@@ -277,7 +278,7 @@ object PdfGenerator {
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, textPaint, boldPaint, linePaint)
         y += 10f
 
-        // ===== Расчёты =====
+        // Расчёты
         y = drawSectionHeader(canvas, "Расчёты",
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, subTitlePaint, fillGrayPaint, linePaint)
 
@@ -309,7 +310,7 @@ object PdfGenerator {
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, boldPaint, boldPaint, linePaint)
         y += 10f
 
-        // ===== Пометка при отрицательном МДУДКП =====
+        // Пометка при отрицательном МДУДКП
         val mdudkpCheck = WellKillCalculator.mdudkp(input)
         if (mdudkpCheck < 0.0) {
             canvas.drawText(
@@ -318,7 +319,7 @@ object PdfGenerator {
             y += 20f
         }
 
-        // ===== Таблица графика =====
+        // Таблица графика
         y = drawSectionHeader(canvas, "График снижения давления",
             MARGIN, y, PAGE_WIDTH - 2 * MARGIN, subTitlePaint, fillGrayPaint, linePaint)
 
@@ -349,7 +350,6 @@ object PdfGenerator {
             y += 10f
         }
 
-        // Подписи внизу
         canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, linePaint)
         y += 25f
         canvas.drawText("Подпись бурильщика: ______________________",
@@ -364,9 +364,7 @@ object PdfGenerator {
         document.close()
     }
 
-    // ============================================================
-    //                     ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-    // ============================================================
+    // ============ ВСПОМОГАТЕЛЬНЫЕ ============
 
     private fun drawSectionHeader(
         canvas: Canvas,
@@ -416,10 +414,8 @@ object PdfGenerator {
         val centerX = left + width / 2f
         val colWidth = 30f
         val innerWidth = 12f
-
         val surfaceY = top + 40f
 
-        // Манометры
         val g1cx = centerX - 25f
         val g2cx = centerX + 25f
         val gcy = top + 15f
@@ -429,7 +425,6 @@ object PdfGenerator {
         canvas.drawLine(g1cx, gcy + gr, g1cx, surfaceY, linePaint)
         canvas.drawLine(g2cx, gcy + gr, g2cx, surfaceY, linePaint)
 
-        // Обсадная колонна
         val casingLeft = centerX - colWidth / 2f
         val casingRight = centerX + colWidth / 2f
         val openHoleBottom = surfaceY + height - 40f
@@ -438,21 +433,18 @@ object PdfGenerator {
         canvas.drawLine(casingLeft, surfaceY, casingLeft, casingBottom, linePaint)
         canvas.drawLine(casingRight, surfaceY, casingRight, casingBottom, linePaint)
 
-        // Открытый ствол
         val openLeft = casingLeft - 6f
         val openRight = casingRight + 6f
         canvas.drawLine(openLeft, casingBottom, openLeft, openHoleBottom, linePaint)
         canvas.drawLine(openRight, casingBottom, openRight, openHoleBottom, linePaint)
         canvas.drawLine(openLeft, openHoleBottom, openRight, openHoleBottom, linePaint)
 
-        // Бурильная колонна
         val drillLeft = centerX - innerWidth / 2f
         val drillRight = centerX + innerWidth / 2f
         val drillBottom = openHoleBottom - 15f
         canvas.drawLine(drillLeft, surfaceY, drillLeft, drillBottom, linePaint)
         canvas.drawLine(drillRight, surfaceY, drillRight, drillBottom, linePaint)
 
-        // Долото
         val bitRect = RectF(drillLeft - 4f, drillBottom, drillRight + 4f, drillBottom + 12f)
         canvas.drawRect(bitRect, boxPaint)
 
