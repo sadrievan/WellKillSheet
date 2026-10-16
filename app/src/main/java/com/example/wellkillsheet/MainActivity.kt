@@ -39,7 +39,6 @@ class MainActivity : ComponentActivity() {
 fun WellKillScreen() {
     var input by remember { mutableStateOf(WellKillInput()) }
     val context = LocalContext.current
-
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
@@ -81,33 +80,22 @@ fun WellKillScreen() {
 
             val isTestMethod = input.calcMethod == CalcMethod.TEST_PRESSURE
 
-            NumberField(
-                label = "(A) Давление на устье при испытании, МПа",
-                value = input.testPressureA,
-                enabled = isTestMethod,
-                roundToInt = false
-            ) { input = input.copy(testPressureA = it) }
+            NumberField("(A) Давление на устье при испытании, МПа",
+                input.testPressureA, enabled = isTestMethod, roundToInt = false) {
+                input = input.copy(testPressureA = it)
+            }
+            NumberField("(B) Плотность раствора при испытании, кг/л",
+                input.testDensityB, enabled = isTestMethod, roundToInt = false) {
+                input = input.copy(testDensityB = it)
+            }
+            NumberField("Давление / градиент гидроразрыва, МПа или МПа/м",
+                input.fracValue, enabled = !isTestMethod, roundToInt = false) {
+                input = input.copy(fracValue = it)
+            }
 
-            NumberField(
-                label = "(B) Плотность раствора при испытании, кг/л",
-                value = input.testDensityB,
-                enabled = isTestMethod,
-                roundToInt = false
-            ) { input = input.copy(testDensityB = it) }
-
-            NumberField(
-                label = "Давление / градиент гидроразрыва, МПа или МПа/м",
-                value = input.fracValue,
-                enabled = !isTestMethod,
-                roundToInt = false
-            ) { input = input.copy(fracValue = it) }
-
-            // Результат (C)
-            val cValue = WellKillCalculator.maxAllowableDensity(input)
             ResultRow("(C) Макс. допустимая плотность, кг/л",
-                "%.2f".format(cValue))
+                "%.2f".format(WellKillCalculator.maxAllowableDensity(input)))
 
-            // МДУДКП с цветовой индикацией
             val mdudkp = WellKillCalculator.mdudkp(input)
             if (mdudkp < 0.0) {
                 Card(
@@ -117,9 +105,7 @@ fun WellKillScreen() {
                     )
                 ) {
                     Row(
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .fillMaxWidth(),
+                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("МДУДКП, МПа",
@@ -164,47 +150,64 @@ fun WellKillScreen() {
 
             // ---------- Бурильная колонна ----------
             SectionTitle("Бурильная колонна")
-            NumberField("КНБК: длина, м", input.bhaLength) {
+            NumberField("КНБК (УБТ): длина, м", input.bhaLength) {
                 input = input.copy(bhaLength = it)
             }
-            NumberField("КНБК: уд. объём, л/м",
+            NumberField("КНБК: уд. объём (внутренний), л/м",
                 input.bhaCapacity, roundToInt = false) {
                 input = input.copy(bhaCapacity = it)
             }
             NumberField("ТБТ: длина, м", input.hwdpLength) {
                 input = input.copy(hwdpLength = it)
             }
-            NumberField("ТБТ: уд. объём, л/м",
+            NumberField("ТБТ: уд. объём (внутренний), л/м",
                 input.hwdpCapacity, roundToInt = false) {
                 input = input.copy(hwdpCapacity = it)
             }
-            NumberField("БТ: длина, м", input.dpLength) {
-                input = input.copy(dpLength = it)
-            }
-            NumberField("БТ: уд. объём, л/м",
+            NumberField("БТ: уд. объём (внутренний), л/м",
                 input.dpCapacity, roundToInt = false) {
                 input = input.copy(dpCapacity = it)
             }
 
+            ResultRow("БТ: длина (авто), м",
+                "%.0f".format(WellKillCalculator.dpLength(input)))
             ResultRow("(D) Объём бурильной колонны, л",
                 WellKillCalculator.drillPipeVolume(input).toString())
 
             // ---------- Кольцевое пространство ----------
             SectionTitle("Кольцевое пространство")
-            NumberField("Открытый ствол: уд. объём, л/м",
-                input.openHoleAnnulusCapacity, roundToInt = false) {
-                input = input.copy(openHoleAnnulusCapacity = it)
+
+            Text("Удельные объёмы КП:",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold)
+            NumberField("Уд. объём ОС для КНБК, л/м",
+                input.osBhaCapacity, roundToInt = false) {
+                input = input.copy(osBhaCapacity = it)
             }
-            NumberField("Обсадная часть: уд. объём, л/м",
-                input.casedHoleAnnulusCapacity, roundToInt = false) {
-                input = input.copy(casedHoleAnnulusCapacity = it)
+            NumberField("Уд. объём ОС для ТБТ/БИ, л/м",
+                input.osHwdpBiCapacity, roundToInt = false) {
+                input = input.copy(osHwdpBiCapacity = it)
+            }
+            NumberField("Уд. объём ОК для БИ, л/м",
+                input.okBiCapacity, roundToInt = false) {
+                input = input.copy(okBiCapacity = it)
             }
 
-            ResultRow("(F) Открытый ствол, л",
+            Text("Длины в открытом стволе:",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold)
+            NumberField("Длина КНБК в ОС, м", input.bhaInOsLength) {
+                input = input.copy(bhaInOsLength = it)
+            }
+            NumberField("Длина ТБТ в ОС, м", input.hwdpInOsLength) {
+                input = input.copy(hwdpInOsLength = it)
+            }
+
+            ResultRow("(F) Объём КП в открытом стволе, л",
                 WellKillCalculator.openHoleAnnulusVolume(input).toString())
-            ResultRow("(G) Обсадная часть, л",
+            ResultRow("(G) Объём КП в обсадной колонне, л",
                 WellKillCalculator.casedHoleAnnulusVolume(input).toString())
-            ResultRow("(H) Объём КП, л",
+            ResultRow("(H) Объём КП общий, л",
                 WellKillCalculator.totalAnnulusVolume(input).toString())
 
             NumberField("(J) Объём наземной обвязки, л", input.surfaceVolumeJ) {
@@ -297,12 +300,10 @@ fun WellKillScreen() {
                 onClick = {
                     val result = WellKillCalculator.validateInput(input)
                     when (result) {
-                        is WellKillCalculator.ValidationResult.Ok -> {
+                        is WellKillCalculator.ValidationResult.Ok ->
                             exportPdf(context, input)
-                        }
-                        is WellKillCalculator.ValidationResult.Error -> {
+                        is WellKillCalculator.ValidationResult.Error ->
                             errorMessage = result.message
-                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -314,7 +315,6 @@ fun WellKillScreen() {
         }
     }
 
-    // Диалог ошибки
     errorMessage?.let { msg ->
         AlertDialog(
             onDismissRequest = { errorMessage = null },
