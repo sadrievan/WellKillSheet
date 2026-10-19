@@ -15,7 +15,7 @@ object PdfGenerator {
     private const val PAGE_WIDTH = 595
     private const val PAGE_HEIGHT = 842
 
-    // Размер шрифта в точках PDF. 11f — стандартный читаемый размер.
+    // Размер шрифта в точках PDF
     private const val PDF_FONT_SIZE = 11f
 
     fun generate(context: Context, input: WellKillInput, outputStream: OutputStream) {
@@ -28,7 +28,6 @@ object PdfGenerator {
         var page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create())
         var canvas = page.canvas
 
-        // Вычисляем масштаб и отступы
         val scale1 = min(PAGE_WIDTH.toFloat() / page1Bitmap.width, PAGE_HEIGHT.toFloat() / page1Bitmap.height)
         val offsetX1 = (PAGE_WIDTH - page1Bitmap.width * scale1) / 2f
         val offsetY1 = (PAGE_HEIGHT - page1Bitmap.height * scale1) / 2f
@@ -37,28 +36,27 @@ object PdfGenerator {
         val destRect1 = RectF(offsetX1, offsetY1, offsetX1 + page1Bitmap.width * scale1, offsetY1 + page1Bitmap.height * scale1)
         canvas.drawBitmap(page1Bitmap, null, destRect1, null)
 
-        // Настройки кистей (размер фиксирован, не зависит от масштаба картинки)
         val textPaint = Paint().apply {
             color = Color.BLACK
-            textSize = PDF_FONT_SIZE // <-- ТЕПЕРЬ РОВНО 11
+            textSize = PDF_FONT_SIZE
             isAntiAlias = true
-            textAlign = Paint.Align.CENTER // Центрируем текст по координатам
+            textAlign = Paint.Align.CENTER
         }
 
-        // Функция для наложения текста
         fun drawTextAt(text: String, x: Float, y: Float, paint: Paint = textPaint) {
             val pdfX = x * scale1 + offsetX1
-            // Небольшая коррекция по Y, так как drawText рисует текст от базовой линии (низа)
-            // 11 * 0.35f = ~4 точки вверх, чтобы центр текста совпал с координатой Y
+            // Коррекция Y для выравнивания по центру ячейки
             val pdfY = y * scale1 + offsetY1 + (PDF_FONT_SIZE * 0.35f)
             canvas.drawText(text, pdfX, pdfY, paint)
         }
 
-        // === ДАННЫЕ ===
+        // === ДАННЫЕ СТРАНИЦЫ 1 ===
 
-        // Дата и ФИО (пока без точных координат, ставим примерно)
-        drawTextAt(input.date, 1600f, 200f)
-        drawTextAt(input.engineer, 1600f, 300f)
+        // Дата и ФИО
+        drawTextAt(input.date, 2005f, 135f)
+        if (input.engineer.isNotEmpty()) {
+            drawTextAt(input.engineer, 2005f, 210f)
+        }
 
         // 1. (A) Давление на устье
         drawTextAt("%.1f".format(input.testPressureA), 1100f, 530f)
@@ -108,7 +106,7 @@ object PdfGenerator {
 
 
         // ==========================================
-        //        СТРАНИЦА 2 (Пока просто подложка)
+        //        СТРАНИЦА 2 (Пока только подложка)
         // ==========================================
         val page2Bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.page2)
         page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 2).create())
@@ -120,6 +118,9 @@ object PdfGenerator {
 
         val destRect2 = RectF(offsetX2, offsetY2, offsetX2 + page2Bitmap.width * scale2, offsetY2 + page2Bitmap.height * scale2)
         canvas.drawBitmap(page2Bitmap, null, destRect2, null)
+
+        // Пока не рисуем здесь текст, так как координат нет.
+        // Но подложка уже будет!
 
         document.finishPage(page)
 
