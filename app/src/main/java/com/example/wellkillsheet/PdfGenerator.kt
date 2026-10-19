@@ -1,6 +1,7 @@
 package com.example.wellkillsheet
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
@@ -15,71 +16,84 @@ object PdfGenerator {
     private const val PAGE_WIDTH = 595
     private const val PAGE_HEIGHT = 842
 
-    // Размер шрифта в точках PDF
-    private const val PDF_FONT_SIZE = 11f
+    // Размер шрифта в пикселях картинки (при сжатии картинки он тоже сожмется)
+    private const val BASE_FONT_SIZE = 20f
+
+    // Функция для загрузки и сжатия картинки (уменьшаем разрешение для экономии веса PDF)
+    private fun loadAndScale(context: Context, resId: Int, targetWidth: Int): Bitmap {
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeResource(context.resources, resId, options)
+        
+        var scale = 1
+        if (options.outWidth > targetWidth) {
+            while (options.outWidth / scale > targetWidth * 2) {
+                scale *= 2
+            }
+        }
+        options.inSampleSize = scale
+        options.inJustDecodeBounds = false
+        
+        val bmp = BitmapFactory.decodeResource(context.resources, resId, options)
+        return if (bmp.width > targetWidth) {
+            Bitmap.createScaledBitmap(bmp, targetWidth, (bmp.height * (targetWidth.toFloat() / bmp.width)).toInt(), true)
+        } else bmp
+    }
 
     fun generate(context: Context, input: WellKillInput, outputStream: OutputStream) {
         val document = PdfDocument()
 
         // ==========================================
-        //        СТРАНИЦА 1
+        //        СТРАНИЦА 1 (Сжатая)
         // ==========================================
-        val page1Bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.page1)
-        var page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create())
+        // Загружаем картинку шириной 1240px (вместо 2550px) — этого хватит для печати!
+        val page1Bitmap = loadAndScale(context, R.drawable.page1, 1240)
+        
+        // Включаем сжатие PDF-потока
+        val pageInfo1 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1)
+            .setUseCompression(true)
+            .create()
+            
+        var page = document.startPage(pageInfo1)
         var canvas = page.canvas
 
         val scale1 = min(PAGE_WIDTH.toFloat() / page1Bitmap.width, PAGE_HEIGHT.toFloat() / page1Bitmap.height)
         val offsetX1 = (PAGE_WIDTH - page1Bitmap.width * scale1) / 2f
         val offsetY1 = (PAGE_HEIGHT - page1Bitmap.height * scale1) / 2f
 
-        // Рисуем подложку
         val destRect1 = RectF(offsetX1, offsetY1, offsetX1 + page1Bitmap.width * scale1, offsetY1 + page1Bitmap.height * scale1)
         canvas.drawBitmap(page1Bitmap, null, destRect1, null)
 
+        val pdfFontSize1 = BASE_FONT_SIZE * scale1
         val textPaint = Paint().apply {
             color = Color.BLACK
-            textSize = PDF_FONT_SIZE
+            textSize = pdfFontSize1
             isAntiAlias = true
             textAlign = Paint.Align.CENTER
         }
 
         fun drawTextAt(text: String, x: Float, y: Float, paint: Paint = textPaint) {
             val pdfX = x * scale1 + offsetX1
-            // Коррекция Y для выравнивания по центру ячейки
-            val pdfY = y * scale1 + offsetY1 + (PDF_FONT_SIZE * 0.35f)
+            val pdfY = y * scale1 + offsetY1 + (pdfFontSize1 * 0.35f)
             canvas.drawText(text, pdfX, pdfY, paint)
         }
 
         // === ДАННЫЕ СТРАНИЦЫ 1 ===
-
-        // Дата и ФИО
         drawTextAt(input.date, 2005f, 135f)
         if (input.engineer.isNotEmpty()) {
             drawTextAt(input.engineer, 2005f, 210f)
         }
 
-        // 1. (A) Давление на устье
         drawTextAt("%.1f".format(input.testPressureA), 1100f, 530f)
-
-        // 2. (B) Плотность при испытании
         drawTextAt("%.2f".format(input.testDensityB), 1100f, 607f)
-
-        // 3. (C) Макс. допустимая плотность
         drawTextAt("%.2f".format(WellKillCalculator.maxAllowableDensity(input)), 1100f, 780f)
-
-        // 4. МДУДКП
         drawTextAt("%.2f".format(WellKillCalculator.mdudkp(input)), 1120f, 1023f)
 
-        // 5. Буровой раствор (Плотность)
         drawTextAt("%.2f".format(input.currentMudDensity), 1790f, 815f)
-
-        // 6-9. Глубины
         drawTextAt("%.0f".format(input.casingShoeMD), 1780f, 1155f)
         drawTextAt("%.0f".format(input.casingShoeTVD), 1780f, 1235f)
         drawTextAt("%.0f".format(input.wellDepthMD), 1780f, 1540f)
         drawTextAt("%.0f".format(input.wellDepthTVD), 1780f, 1620f)
 
-        // 10. Таблица объёмов
         // БТ
         drawTextAt("%.0f".format(WellKillCalculator.dpLength(input)), 900f, 1981f)
         drawTextAt("%.4f".format(input.dpCapacity), 1135f, 1981f)
@@ -93,7 +107,6 @@ object PdfGenerator {
         drawTextAt("%.4f".format(input.bhaCapacity), 1135f, 2140f)
         drawTextAt(WellKillCalculator.roundUpInt(WellKillCalculator.bhaVolumeRaw(input)).toString(), 1415f, 2140f)
 
-        // 11. Объёмы (D, E, F, G, H, I, J)
         drawTextAt(WellKillCalculator.drillPipeVolume(input).toString(), 1431f, 2210f)
         drawTextAt(WellKillCalculator.strokesToBit(input).toString(), 1785f, 2210f)
         drawTextAt(WellKillCalculator.openHoleAnnulusVolume(input).toString(), 1430f, 2455f)
@@ -104,24 +117,24 @@ object PdfGenerator {
 
         document.finishPage(page)
 
-
         // ==========================================
-        //        СТРАНИЦА 2 (Пока только подложка)
+        //        СТРАНИЦА 2 (Сжатая)
         // ==========================================
-        val page2Bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.page2)
-        page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 2).create())
+        val page2Bitmap = loadAndScale(context, R.drawable.page2, 1240)
+        
+        val pageInfo2 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 2)
+            .setUseCompression(true)
+            .create()
+            
+        page = document.startPage(pageInfo2)
         canvas = page.canvas
-
+        
         val scale2 = min(PAGE_WIDTH.toFloat() / page2Bitmap.width, PAGE_HEIGHT.toFloat() / page2Bitmap.height)
         val offsetX2 = (PAGE_WIDTH - page2Bitmap.width * scale2) / 2f
         val offsetY2 = (PAGE_HEIGHT - page2Bitmap.height * scale2) / 2f
-
         val destRect2 = RectF(offsetX2, offsetY2, offsetX2 + page2Bitmap.width * scale2, offsetY2 + page2Bitmap.height * scale2)
         canvas.drawBitmap(page2Bitmap, null, destRect2, null)
-
-        // Пока не рисуем здесь текст, так как координат нет.
-        // Но подложка уже будет!
-
+        
         document.finishPage(page)
 
         document.writeTo(outputStream)
