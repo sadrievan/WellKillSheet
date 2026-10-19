@@ -17,7 +17,7 @@ object PdfGenerator {
     private const val PAGE_HEIGHT = 842
 
     // Размер шрифта (в пикселях исходной картинки)
-    private const val BASE_FONT_SIZE = 20f
+    private const val BASE_FONT_SIZE = 40f
 
     // Исходные размеры картинок ДО сжатия (важно для правильных координат!)
     private const val ORIGINAL_PAGE1_WIDTH = 2550f
