@@ -110,7 +110,7 @@ object PdfGenerator {
         // ==========================================
         //        СТРАНИЦА 2 (Пока просто подложка)
         // ==========================================
-        val page2Bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.pag2)
+        val page2Bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.page2)
         page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 2).create())
         canvas = page.canvas
 
