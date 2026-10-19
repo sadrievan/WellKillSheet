@@ -16,10 +16,10 @@ object PdfGenerator {
     private const val PAGE_WIDTH = 595
     private const val PAGE_HEIGHT = 842
 
-    // Размер шрифта в пикселях картинки (при сжатии картинки он тоже сожмется)
+    // Размер шрифта (в пикселях исходной картинки)
     private const val BASE_FONT_SIZE = 20f
 
-    // Функция для загрузки и сжатия картинки (уменьшаем разрешение для экономии веса PDF)
+    // Функция для загрузки и сжатия картинки (уменьшаем разрешение для экономии веса)
     private fun loadAndScale(context: Context, resId: Int, targetWidth: Int): Bitmap {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeResource(context.resources, resId, options)
@@ -48,11 +48,7 @@ object PdfGenerator {
         // Загружаем картинку шириной 1240px (вместо 2550px) — этого хватит для печати!
         val page1Bitmap = loadAndScale(context, R.drawable.page1, 1240)
         
-        // Включаем сжатие PDF-потока
-        val pageInfo1 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1)
-            .setUseCompression(true)
-            .create()
-            
+        val pageInfo1 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create()
         var page = document.startPage(pageInfo1)
         var canvas = page.canvas
 
@@ -122,10 +118,7 @@ object PdfGenerator {
         // ==========================================
         val page2Bitmap = loadAndScale(context, R.drawable.page2, 1240)
         
-        val pageInfo2 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 2)
-            .setUseCompression(true)
-            .create()
-            
+        val pageInfo2 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 2).create()
         page = document.startPage(pageInfo2)
         canvas = page.canvas
         
