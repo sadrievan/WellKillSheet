@@ -93,12 +93,10 @@ object PdfGenerator {
         drawTextAt1("%.0f".format(input.wellDepthMD), 1780f, 1540f)
         drawTextAt1("%.0f".format(input.wellDepthTVD), 1780f, 1620f)
 
-        // Насосы
         drawTextAt1("%.4f".format(input.pumpOutput), 425f, 1300f)
         drawTextAt1("%.1f".format(input.pumpPressure), 700f, 1650f)
         drawTextAt1("%.0f".format(input.pumpRate), 280f, 1650f)
 
-        // Таблица объёмов
         drawTextAt1("%.0f".format(WellKillCalculator.dpLength(input)), 900f, 1981f)
         drawTextAt1("%.4f".format(input.dpCapacity), 1135f, 1981f)
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.dpVolumeRaw(input)).toString(), 1415f, 1981f)
@@ -155,13 +153,10 @@ object PdfGenerator {
         }
 
         // === ДАННЫЕ СТРАНИЦЫ 2 ===
-        
-        // Приток
         drawTextAt2("%.1f".format(input.sidpp), 680f, 435f)
         drawTextAt2("%.1f".format(input.sicp), 1350f, 435f)
         drawTextAt2("%.0f".format(input.influxVolume), 2000f, 435f)
 
-        // Расчеты
         drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 2100f, 640f)
         drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 2100f, 865f)
         drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 2100f, 1120f)
@@ -171,50 +166,82 @@ object PdfGenerator {
         // === ТАБЛИЦА 30 СТРОК ===
         val schedule = WellKillCalculator.pressureSchedule(input, maxRows = 30)
         
-        // Координаты первой строки
-        val startX_Strokes = 275f
+        val startX_Strokes = 270f
         val startX_Pressure = 500f
-        val startY = 1587f
-        // Вычисляем шаг между строками (расстояние от 1-й до 30-й строки делим на 29)
-        // Поскольку таблица заканчивается где-то внизу, мы подберем шаг. 
-        // Возьмем стандартный шаг ~32 пикселя (подгонишь, если будет наезжать)
-        val stepY = 31.5f 
+        val startY = 1580f
+        val stepY = 60f // Точный шаг между строками
 
         for (i in 0 until 30) {
+            val rowY = startY + i * stepY
             if (i < schedule.size) {
-                val rowY = startY + i * stepY
                 drawTextAt2(schedule[i].strokes.toString(), startX_Strokes, rowY)
                 drawTextAt2("%.1f".format(schedule[i].pressure), startX_Pressure, rowY)
             }
         }
 
-        // === ГРАФИК ===
-        // Рисуем линию от Рнач (левый нижний угол) до Ркон (правый верхний)
-        val gLeft = 887f
-        val gBottom = 2935f
-        val gRight = 2280f
-        val gTop = 1370f
+        // === ГРАФИК (Оси и линия) ===
+        val linePaint = Paint().apply {
+            color = Color.BLACK
+            strokeWidth = 1.5f
+            style = Paint.Style.STROKE
+            isAntiAlias = true
+        }
+        
+        val labelPaint = Paint().apply {
+            color = Color.BLACK
+            textSize = (30f / compressRatio2) * scale2 // Шрифт для осей чуть мельче
+            isAntiAlias = true
+            textAlign = Paint.Align.RIGHT // Для подписей Y
+        }
 
-        // Переводим координаты графика в PDF-координаты
+        val labelPaintX = Paint().apply {
+            color = Color.BLACK
+            textSize = (30f / compressRatio2) * scale2
+            isAntiAlias = true
+            textAlign = Paint.Align.CENTER // Для подписей X
+        }
+
+        val gLeft = 890f
+        val gBottom = 2932f
+        val gRight = 2280f
+        val gTop = 1431f
+
+        // Перевод в PDF координаты
         fun toPdfX(x: Float) = (x / compressRatio2) * scale2 + offsetX2
         fun toPdfY(y: Float) = (y / compressRatio2) * scale2 + offsetY2
 
-        val linePaint = Paint().apply {
-            color = Color.BLACK
-            strokeWidth = 2f
-            style = Paint.Style.STROKE
+        // 1. Оцифровка оси Y (Давление от 0 до 13 МПа)
+        val maxPressure = 13f
+        for (p in 0..13 step 2) {
+            val yPos = gBottom - (p / maxPressure) * (gBottom - gTop)
+            // Линия сетки (опционально, так как сетка уже есть на фоне)
+            // Подпись
+            canvas.drawText("$p", toPdfX(gLeft - 20f), toPdfY(yPos) + (pdfFontSize2 * 0.35f), labelPaint)
         }
 
-        // Начальная точка (0 ходов, Рнач) - на оси Y (слева)
-        val startPointY = gBottom - ((WellKillCalculator.initialCirculatingPressure(input) / 15.0f) * (gBottom - gTop)).toFloat()
-        // Конечная точка (E ходов, Ркон) - на оси X (справа)
-        val endPointY = gBottom - ((WellKillCalculator.finalCirculatingPressure(input) / 15.0f) * (gBottom - gTop)).toFloat()
-        
-        // Ограничиваем точки, чтобы они не вылетали за сетку
-        val safeStartY = startPointY.coerceIn(gTop, gBottom)
-        val safeEndY = endPointY.coerceIn(gTop, gBottom)
+        // 2. Оцифровка оси X (Ходы от 0 до 2400)
+        val maxStrokes = 2400f
+        for (s in 0..2400 step 600) {
+            val xPos = gLeft + (s / maxStrokes) * (gRight - gLeft)
+            canvas.drawText("$s", toPdfX(xPos), toPdfY(gBottom + 60f), labelPaintX)
+        }
 
-        canvas.drawLine(toPdfX(gLeft), toPdfY(safeStartY), toPdfX(gRight), toPdfY(safeEndY), linePaint)
+        // 3. Линия снижения давления
+        val pStart = WellKillCalculator.initialCirculatingPressure(input)
+        val pEnd = WellKillCalculator.finalCirculatingPressure(input)
+        val e = WellKillCalculator.strokesToBit(input).toFloat()
+
+        // Координаты начала и конца линии в пикселях картинки
+        val startPxY = gBottom - (pStart / maxPressure) * (gBottom - gTop)
+        val endPxX = gLeft + (e / maxStrokes) * (gRight - gLeft)
+        val endPxY = gBottom - (pEnd / maxPressure) * (gBottom - gTop)
+
+        // Ограничители, чтобы линия не вылетала за сетку
+        val safeStartY = startPxY.coerceIn(gTop, gBottom)
+        val safeEndX = endPxX.coerceIn(gLeft, gRight)
+        val safeEndY = endPxY.coerceIn(gTop, gBottom)
+
+        canvas.drawLine(toPdfX(gLeft), toPdfY(safeStartY), toPdfX(safeEndX), toPdfY(safeEndY), linePaint)
 
         document.finishPage(page)
 
