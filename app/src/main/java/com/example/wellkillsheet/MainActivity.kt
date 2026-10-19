@@ -348,23 +348,55 @@ fun NumberField(
     roundToInt: Boolean = true,
     onChange: (Double) -> Unit
 ) {
-    var text by remember(value) {
-        mutableStateOf(if (value == 0.0) "" else value.toString())
+    // Инициализируем text ОДИН раз. Не пересоздаём из value при каждом рендере.
+    var text by remember { mutableStateOf(if (value == 0.0) "" else formatNumber(value)) }
+    var lastValue by remember { mutableStateOf(value) }
+
+    // Синхронизация: если value изменилось извне
+    if (value != lastValue) {
+        val currentParsed = text.replace(',', '.').toDoubleOrNull()
+        val roundedCurrent = if (currentParsed != null) Math.round(currentParsed).toDouble() else 0.0
+        if (value != roundedCurrent) {
+            text = if (value == 0.0) "" else formatNumber(value)
+        }
+        lastValue = value
     }
+
     OutlinedTextField(
         value = text,
-        onValueChange = {
-            text = it
-            var parsed = it.replace(',', '.').toDoubleOrNull() ?: 0.0
-            if (roundToInt) parsed = Math.round(parsed).toDouble()
-            onChange(parsed)
+        onValueChange = { newText ->
+            val regex = if (roundToInt) Regex("^-?\\d*$") else Regex("^-?\\d*[.,]?\\d*$")
+            
+            if (newText.isEmpty() || newText.matches(regex)) {
+                text = newText
+                val parsed = newText.replace(',', '.').toDoubleOrNull()
+                if (parsed != null) {
+                    val toSend = if (roundToInt) Math.round(parsed).toDouble() else parsed
+                    onChange(toSend)
+                    lastValue = toSend
+                } else if (newText.isEmpty()) {
+                    onChange(0.0)
+                    lastValue = 0.0
+                }
+            }
         },
         label = { Text(label) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (roundToInt) KeyboardType.Number else KeyboardType.Decimal
+        ),
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         enabled = enabled
     )
+}
+
+// Вспомогательная функция для отображения числа в поле ввода
+fun formatNumber(v: Double): String {
+    return if (v == Math.floor(v) && !v.isInfinite()) {
+        v.toInt().toString()
+    } else {
+        v.toString().replace('.', ',')
+    }
 }
 
 @Composable
