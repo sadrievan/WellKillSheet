@@ -189,16 +189,16 @@ object PdfGenerator {
         
         val labelPaint = Paint().apply {
             color = Color.BLACK
-            textSize = (30f / compressRatio2) * scale2 // Шрифт для осей чуть мельче
+            textSize = (30f / compressRatio2) * scale2
             isAntiAlias = true
-            textAlign = Paint.Align.RIGHT // Для подписей Y
+            textAlign = Paint.Align.RIGHT
         }
 
         val labelPaintX = Paint().apply {
             color = Color.BLACK
             textSize = (30f / compressRatio2) * scale2
             isAntiAlias = true
-            textAlign = Paint.Align.CENTER // Для подписей X
+            textAlign = Paint.Align.CENTER
         }
 
         val gLeft = 890f
@@ -206,23 +206,20 @@ object PdfGenerator {
         val gRight = 2280f
         val gTop = 1431f
 
-        // Перевод в PDF координаты
         fun toPdfX(x: Float) = (x / compressRatio2) * scale2 + offsetX2
         fun toPdfY(y: Float) = (y / compressRatio2) * scale2 + offsetY2
 
-        // 1. Оцифровка оси Y (Давление от 0 до 13 МПа)
+        // 1. Оцифровка оси Y
         val maxPressure = 13f
         for (p in 0..13 step 2) {
-            val yPos = gBottom - (p / maxPressure) * (gBottom - gTop)
-            // Линия сетки (опционально, так как сетка уже есть на фоне)
-            // Подпись
+            val yPos = gBottom - (p.toFloat() / maxPressure) * (gBottom - gTop)
             canvas.drawText("$p", toPdfX(gLeft - 20f), toPdfY(yPos) + (pdfFontSize2 * 0.35f), labelPaint)
         }
 
-        // 2. Оцифровка оси X (Ходы от 0 до 2400)
+        // 2. Оцифровка оси X
         val maxStrokes = 2400f
         for (s in 0..2400 step 600) {
-            val xPos = gLeft + (s / maxStrokes) * (gRight - gLeft)
+            val xPos = gLeft + (s.toFloat() / maxStrokes) * (gRight - gLeft)
             canvas.drawText("$s", toPdfX(xPos), toPdfY(gBottom + 60f), labelPaintX)
         }
 
@@ -231,12 +228,11 @@ object PdfGenerator {
         val pEnd = WellKillCalculator.finalCirculatingPressure(input)
         val e = WellKillCalculator.strokesToBit(input).toFloat()
 
-        // Координаты начала и конца линии в пикселях картинки
-        val startPxY = gBottom - (pStart / maxPressure) * (gBottom - gTop)
+        // ВАЖНО: здесь добавлены .toFloat() для конвертации Double -> Float
+        val startPxY = gBottom - (pStart.toFloat() / maxPressure) * (gBottom - gTop)
         val endPxX = gLeft + (e / maxStrokes) * (gRight - gLeft)
-        val endPxY = gBottom - (pEnd / maxPressure) * (gBottom - gTop)
+        val endPxY = gBottom - (pEnd.toFloat() / maxPressure) * (gBottom - gTop)
 
-        // Ограничители, чтобы линия не вылетала за сетку
         val safeStartY = startPxY.coerceIn(gTop, gBottom)
         val safeEndX = endPxX.coerceIn(gLeft, gRight)
         val safeEndY = endPxY.coerceIn(gTop, gBottom)
