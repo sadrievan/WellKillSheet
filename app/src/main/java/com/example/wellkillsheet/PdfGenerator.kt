@@ -19,7 +19,11 @@ object PdfGenerator {
     // Размер шрифта (в пикселях исходной картинки)
     private const val BASE_FONT_SIZE = 20f
 
-    // Функция для загрузки и сжатия картинки (уменьшаем разрешение для экономии веса)
+    // Исходные размеры картинок ДО сжатия (важно для правильных координат!)
+    private const val ORIGINAL_PAGE1_WIDTH = 2550f
+    private const val ORIGINAL_PAGE2_WIDTH = 2409f
+
+    // Функция для загрузки и сжатия картинки
     private fun loadAndScale(context: Context, resId: Int, targetWidth: Int): Bitmap {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeResource(context.resources, resId, options)
@@ -45,9 +49,11 @@ object PdfGenerator {
         // ==========================================
         //        СТРАНИЦА 1 (Сжатая)
         // ==========================================
-        // Загружаем картинку шириной 1240px (вместо 2550px) — этого хватит для печати!
         val page1Bitmap = loadAndScale(context, R.drawable.page1, 1240)
         
+        // Коэффициент, на который мы сжали картинку (2550 / 1240 ≈ 2.056)
+        val compressRatio1 = ORIGINAL_PAGE1_WIDTH / page1Bitmap.width
+
         val pageInfo1 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create()
         var page = document.startPage(pageInfo1)
         var canvas = page.canvas
@@ -59,7 +65,8 @@ object PdfGenerator {
         val destRect1 = RectF(offsetX1, offsetY1, offsetX1 + page1Bitmap.width * scale1, offsetY1 + page1Bitmap.height * scale1)
         canvas.drawBitmap(page1Bitmap, null, destRect1, null)
 
-        val pdfFontSize1 = BASE_FONT_SIZE * scale1
+        // Шрифт уменьшаем вместе с картинкой
+        val pdfFontSize1 = (BASE_FONT_SIZE / compressRatio1) * scale1
         val textPaint = Paint().apply {
             color = Color.BLACK
             textSize = pdfFontSize1
@@ -68,8 +75,12 @@ object PdfGenerator {
         }
 
         fun drawTextAt(text: String, x: Float, y: Float, paint: Paint = textPaint) {
-            val pdfX = x * scale1 + offsetX1
-            val pdfY = y * scale1 + offsetY1 + (pdfFontSize1 * 0.35f)
+            // ВОТ ГЛАВНОЕ ИСПРАВЛЕНИЕ: умножаем координаты на compressRatio1
+            val adjustedX = x / compressRatio1
+            val adjustedY = y / compressRatio1
+
+            val pdfX = adjustedX * scale1 + offsetX1
+            val pdfY = adjustedY * scale1 + offsetY1 + (pdfFontSize1 * 0.35f)
             canvas.drawText(text, pdfX, pdfY, paint)
         }
 
@@ -117,6 +128,7 @@ object PdfGenerator {
         //        СТРАНИЦА 2 (Сжатая)
         // ==========================================
         val page2Bitmap = loadAndScale(context, R.drawable.page2, 1240)
+        val compressRatio2 = ORIGINAL_PAGE2_WIDTH / page2Bitmap.width
         
         val pageInfo2 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 2).create()
         page = document.startPage(pageInfo2)
@@ -127,6 +139,8 @@ object PdfGenerator {
         val offsetY2 = (PAGE_HEIGHT - page2Bitmap.height * scale2) / 2f
         val destRect2 = RectF(offsetX2, offsetY2, offsetX2 + page2Bitmap.width * scale2, offsetY2 + page2Bitmap.height * scale2)
         canvas.drawBitmap(page2Bitmap, null, destRect2, null)
+        
+        // (Если будете рисовать текст на 2-й странице, не забудьте тоже делить координаты на compressRatio2)
         
         document.finishPage(page)
 
