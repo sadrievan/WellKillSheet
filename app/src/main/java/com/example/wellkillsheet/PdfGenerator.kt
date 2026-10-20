@@ -97,30 +97,29 @@ object PdfGenerator {
         drawTextAt1("%.1f".format(input.pumpPressure), 700f, 1650f)
         drawTextAt1("%.0f".format(input.pumpRate), 280f, 1650f)
 
-        // Таблица объемов (левая часть)
+        // Таблица объемов
         drawTextAt1("%.0f".format(WellKillCalculator.dpLength(input)), 900f, 1981f)
-        drawTextAt1("%.2f".format(input.dpCapacity), 1135f, 1981f) // Округлено до 2 знаков
+        drawTextAt1("%.2f".format(input.dpCapacity), 1135f, 1981f) 
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.dpVolumeRaw(input)).toString(), 1415f, 1981f)
         
         drawTextAt1("%.0f".format(input.hwdpLength), 900f, 2065f)
-        drawTextAt1("%.2f".format(input.hwdpCapacity), 1135f, 2065f) // Округлено до 2 знаков
+        drawTextAt1("%.2f".format(input.hwdpCapacity), 1135f, 2065f) 
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.hwdpVolumeRaw(input)).toString(), 1415f, 2065f)
         
         drawTextAt1("%.0f".format(input.bhaLength), 900f, 2140f)
-        drawTextAt1("%.2f".format(input.bhaCapacity), 1135f, 2140f) // Округлено до 2 знаков
+        drawTextAt1("%.2f".format(input.bhaCapacity), 1135f, 2140f) 
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.bhaVolumeRaw(input)).toString(), 1415f, 2140f)
 
         // (D) и (E)
         drawTextAt1(WellKillCalculator.drillPipeVolume(input).toString(), 1431f, 2210f)
         drawTextAt1(WellKillCalculator.strokesToBit(input).toString(), 1785f, 2210f)
         
-        // Время до долота (Е / скорость)
         if (input.pumpRate > 0) {
             val timeToBit = WellKillCalculator.roundUpInt(WellKillCalculator.strokesToBit(input).toDouble() / input.pumpRate)
             drawTextAt1(timeToBit.toString(), 2160f, 2210f)
         }
 
-        // (F) и ходы/время для F
+        // (F)
         drawTextAt1(WellKillCalculator.openHoleAnnulusVolume(input).toString(), 1430f, 2455f)
         if (input.pumpOutput > 0) {
             val strokesF = WellKillCalculator.roundUpInt(WellKillCalculator.openHoleAnnulusVolume(input).toDouble() / input.pumpOutput)
@@ -131,7 +130,7 @@ object PdfGenerator {
             }
         }
 
-        // (G) и ходы/время для G
+        // (G)
         drawTextAt1(WellKillCalculator.casedHoleAnnulusVolume(input).toString(), 1430f, 2565f)
         if (input.pumpOutput > 0) {
             val strokesG = WellKillCalculator.roundUpInt(WellKillCalculator.casedHoleAnnulusVolume(input).toDouble() / input.pumpOutput)
@@ -142,7 +141,7 @@ object PdfGenerator {
             }
         }
 
-        // (H) и ходы/время для H
+        // (H)
         drawTextAt1(WellKillCalculator.totalAnnulusVolume(input).toString(), 1400f, 2645f)
         if (input.pumpOutput > 0) {
             val strokesH = WellKillCalculator.roundUpInt(WellKillCalculator.totalAnnulusVolume(input).toDouble() / input.pumpOutput)
@@ -153,7 +152,7 @@ object PdfGenerator {
             }
         }
 
-        // (I) и ходы/время для I
+        // (I)
         drawTextAt1(WellKillCalculator.totalWellVolume(input).toString(), 1400f, 2790f)
         if (input.pumpOutput > 0) {
             val strokesI = WellKillCalculator.roundUpInt(WellKillCalculator.totalWellVolume(input).toDouble() / input.pumpOutput)
@@ -164,14 +163,14 @@ object PdfGenerator {
             }
         }
 
-        // (J) - только ходы
+        // (J)
         drawTextAt1(WellKillCalculator.roundUpInt(input.surfaceVolumeJ).toString(), 1400f, 2880f)
         if (input.pumpOutput > 0) {
             val strokesJ = WellKillCalculator.roundUpInt(WellKillCalculator.roundUpInt(input.surfaceVolumeJ).toDouble() / input.pumpOutput)
             drawTextAt1(strokesJ.toString(), 1760f, 2875f)
         }
 
-        // (I+J) - только ходы
+        // (I+J)
         drawTextAt1(WellKillCalculator.totalVolumeWithSurface(input).toString(), 1330f, 2965f)
         if (input.pumpOutput > 0) {
             val strokesIJ = WellKillCalculator.roundUpInt(WellKillCalculator.totalVolumeWithSurface(input).toDouble() / input.pumpOutput)
@@ -231,13 +230,13 @@ object PdfGenerator {
         
         val tvdDenominator = Math.round((input.casingShoeTVD * 0.00981) * 100.0) / 100.0
         drawTextAt2("%.2f".format(tvdDenominator), 1120f, 660f)
-        
-        drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 740f, 490f) // Результат формулы
 
-        // Расчеты
-        drawTextAt2("%.1f".format(input.pumpPressure), 640f, 850f)
-        drawTextAt2("%.1f".format(input.sidpp), 985f, 850f)
-        drawTextAt2("%.1f".format(input.currentMudDensity), 740f, 1150f)
+        // Результаты и данные
+        drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 2100f, 640f) // Плотность глушения (возвращено)
+        drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 2100f, 860f) // Рнач (добавлено)
+        drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 2100f, 1120f) // Ркон (добавлено)
+        drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 750f, 1100f) // Плотность глушения (добавлено)
+        drawTextAt2("%.1f".format(input.pumpPressure), 1000f, 1100f) // Давление прокачки (добавлено)
 
         // Строка (К) = Рнач - Ркон
         drawTextAt2(" = ", 460f, 1230f)
@@ -247,15 +246,15 @@ object PdfGenerator {
         drawTextAt2(" = ", 870f, 1230f)
         drawTextAt2("%.1f".format(WellKillCalculator.pressureDifferenceK(input)), 940f, 1230f)
 
-        // Остальные расчеты (сдвинутые)
+        // Снижение давления
         drawTextAt2("%.3f".format(WellKillCalculator.pressureDropPer100Strokes(input)), 1600f, 1250f)
 
-        // Таблица 30 строк
+        // Таблица 30 строк (шаг увеличен на 2 пикселя: 56 + 2 = 58f)
         val schedule = WellKillCalculator.pressureSchedule(input, maxRows = 30)
         val startX_Strokes = 270f
         val startX_Pressure = 500f
         val startY = 1580f
-        val stepY = 56f
+        val stepY = 58f 
 
         for (i in 0 until 30) {
             val rowY = startY + i * stepY
