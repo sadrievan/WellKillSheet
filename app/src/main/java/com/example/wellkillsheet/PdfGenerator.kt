@@ -228,7 +228,7 @@ object PdfGenerator {
         val startX_Strokes = 270f
         val startX_Pressure = 500f
         val startY = 1580f
-        val stepY = 60f
+        val stepY = 56f // Уменьшили шаг с 60f до 56f
 
         for (i in 0 until 30) {
             val rowY = startY + i * stepY
