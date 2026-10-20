@@ -99,15 +99,15 @@ object PdfGenerator {
 
         // Таблица объемов (левая часть)
         drawTextAt1("%.0f".format(WellKillCalculator.dpLength(input)), 900f, 1981f)
-        drawTextAt1("%.4f".format(input.dpCapacity), 1135f, 1981f)
+        drawTextAt1("%.2f".format(input.dpCapacity), 1135f, 1981f) // Округлено до 2 знаков
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.dpVolumeRaw(input)).toString(), 1415f, 1981f)
         
         drawTextAt1("%.0f".format(input.hwdpLength), 900f, 2065f)
-        drawTextAt1("%.4f".format(input.hwdpCapacity), 1135f, 2065f)
+        drawTextAt1("%.2f".format(input.hwdpCapacity), 1135f, 2065f) // Округлено до 2 знаков
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.hwdpVolumeRaw(input)).toString(), 1415f, 2065f)
         
         drawTextAt1("%.0f".format(input.bhaLength), 900f, 2140f)
-        drawTextAt1("%.4f".format(input.bhaCapacity), 1135f, 2140f)
+        drawTextAt1("%.2f".format(input.bhaCapacity), 1135f, 2140f) // Округлено до 2 знаков
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.bhaVolumeRaw(input)).toString(), 1415f, 2140f)
 
         // (D) и (E)
@@ -213,14 +213,41 @@ object PdfGenerator {
         }
 
         // === ДАННЫЕ СТРАНИЦЫ 2 ===
+        
+        // Шапка
+        drawTextAt2(input.date, 1900f, 155f)
+        if (input.engineer.isNotEmpty()) {
+            drawTextAt2(input.engineer, 1900f, 230f)
+        }
+
+        // Приток
         drawTextAt2("%.1f".format(input.sidpp), 680f, 435f)
         drawTextAt2("%.1f".format(input.sicp), 1350f, 435f)
         drawTextAt2("%.0f".format(input.influxVolume), 2000f, 435f)
 
-        drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 2100f, 640f)
-        drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 2100f, 865f)
-        drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 2100f, 1120f)
-        drawTextAt2("%.1f".format(WellKillCalculator.pressureDifferenceK(input)), 860f, 1250f)
+        // Формула плотности глушения
+        drawTextAt2("%.2f".format(input.currentMudDensity), 740f, 620f)
+        drawTextAt2("%.1f".format(input.sidpp), 1140f, 600f)
+        
+        val tvdDenominator = Math.round((input.casingShoeTVD * 0.00981) * 100.0) / 100.0
+        drawTextAt2("%.2f".format(tvdDenominator), 1120f, 660f)
+        
+        drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 740f, 490f) // Результат формулы
+
+        // Расчеты
+        drawTextAt2("%.1f".format(input.pumpPressure), 640f, 850f)
+        drawTextAt2("%.1f".format(input.sidpp), 985f, 850f)
+        drawTextAt2("%.1f".format(input.currentMudDensity), 740f, 1150f)
+
+        // Строка (К) = Рнач - Ркон
+        drawTextAt2(" = ", 460f, 1230f)
+        drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 600f, 1230f)
+        drawTextAt2("-", 690f, 1230f)
+        drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 730f, 1230f)
+        drawTextAt2(" = ", 870f, 1230f)
+        drawTextAt2("%.1f".format(WellKillCalculator.pressureDifferenceK(input)), 940f, 1230f)
+
+        // Остальные расчеты (сдвинутые)
         drawTextAt2("%.3f".format(WellKillCalculator.pressureDropPer100Strokes(input)), 1600f, 1250f)
 
         // Таблица 30 строк
@@ -228,7 +255,7 @@ object PdfGenerator {
         val startX_Strokes = 270f
         val startX_Pressure = 500f
         val startY = 1580f
-        val stepY = 56f // Уменьшили шаг с 60f до 56f
+        val stepY = 56f
 
         for (i in 0 until 30) {
             val rowY = startY + i * stepY
