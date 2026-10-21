@@ -41,6 +41,23 @@ fun WellKillScreen() {
     val context = LocalContext.current
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    // Вычисляем, нужно ли скрывать поля ввода длин в ОС
+    val osLength = WellKillCalculator.openHoleLength(input)
+    val bhaPlusHwdp = input.bhaLength + input.hwdpLength
+    val isOsLongEnough = osLength >= bhaPlusHwdp && bhaPlusHwdp > 0.0
+
+    // Автоматическая подстановка значений, если условие выполнено
+    LaunchedEffect(isOsLongEnough) {
+        if (isOsLongEnough) {
+            if (input.bhaInOsLength != input.bhaLength || input.hwdpInOsLength != input.hwdpLength) {
+                input = input.copy(
+                    bhaInOsLength = input.bhaLength,
+                    hwdpInOsLength = input.hwdpLength
+                )
+            }
+        }
+    }
+
     Scaffold(
         topBar = { TopAppBar(title = { Text("Лист глушения") }) }
     ) { padding ->
@@ -196,11 +213,15 @@ fun WellKillScreen() {
             Text("Длины в открытом стволе:",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold)
-            NumberField("Длина КНБК в ОС, м", input.bhaInOsLength) {
-                input = input.copy(bhaInOsLength = it)
-            }
-            NumberField("Длина ТБТ в ОС, м", input.hwdpInOsLength) {
-                input = input.copy(hwdpInOsLength = it)
+            
+            // Правка 5: Скрываем поля, если ОС длиннее суммы КНБК и ТБТ
+            if (!isOsLongEnough) {
+                NumberField("Длина КНБК в ОС, м", input.bhaInOsLength) {
+                    input = input.copy(bhaInOsLength = it)
+                }
+                NumberField("Длина ТБТ в ОС, м", input.hwdpInOsLength) {
+                    input = input.copy(hwdpInOsLength = it)
+                }
             }
 
             ResultRow("(F) Объём КП в открытом стволе, л",
@@ -348,11 +369,9 @@ fun NumberField(
     roundToInt: Boolean = true,
     onChange: (Double) -> Unit
 ) {
-    // Инициализируем text ОДИН раз. Не пересоздаём из value при каждом рендере.
     var text by remember { mutableStateOf(if (value == 0.0) "" else formatNumber(value)) }
     var lastValue by remember { mutableStateOf(value) }
 
-    // Синхронизация: если value изменилось извне
     if (value != lastValue) {
         val currentParsed = text.replace(',', '.').toDoubleOrNull()
         val roundedCurrent = if (currentParsed != null) Math.round(currentParsed).toDouble() else 0.0
@@ -390,7 +409,6 @@ fun NumberField(
     )
 }
 
-// Вспомогательная функция для отображения числа в поле ввода
 fun formatNumber(v: Double): String {
     return if (v == Math.floor(v) && !v.isInfinite()) {
         v.toInt().toString()
