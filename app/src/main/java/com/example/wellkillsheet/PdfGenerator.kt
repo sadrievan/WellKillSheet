@@ -15,6 +15,7 @@ object PdfGenerator {
 
     private const val PAGE_WIDTH = 595
     private const val PAGE_HEIGHT = 842
+
     private const val BASE_FONT_SIZE = 40f
 
     private const val ORIGINAL_PAGE1_WIDTH = 2550f
@@ -26,7 +27,9 @@ object PdfGenerator {
         
         var scale = 1
         if (options.outWidth > targetWidth) {
-            while (options.outWidth / scale > targetWidth * 2) scale *= 2
+            while (options.outWidth / scale > targetWidth * 2) {
+                scale *= 2
+            }
         }
         options.inSampleSize = scale
         options.inJustDecodeBounds = false
@@ -66,14 +69,18 @@ object PdfGenerator {
         }
 
         fun drawTextAt1(text: String, x: Float, y: Float, paint: Paint = textPaint1) {
-            val pdfX = (x / compressRatio1) * scale1 + offsetX1
-            val pdfY = (y / compressRatio1) * scale1 + offsetY1 + (pdfFontSize1 * 0.35f)
+            val adjustedX = x / compressRatio1
+            val adjustedY = y / compressRatio1
+            val pdfX = adjustedX * scale1 + offsetX1
+            val pdfY = adjustedY * scale1 + offsetY1 + (pdfFontSize1 * 0.35f)
             canvas.drawText(text, pdfX, pdfY, paint)
         }
 
         // === ДАННЫЕ СТРАНИЦЫ 1 ===
         drawTextAt1(input.date, 2005f, 135f)
-        if (input.engineer.isNotEmpty()) drawTextAt1(input.engineer, 2005f, 210f)
+        if (input.engineer.isNotEmpty()) {
+            drawTextAt1(input.engineer, 2005f, 210f)
+        }
 
         // Правка 3: Оставляем (A) и (B) пустыми, если выбран градиент
         if (input.calcMethod == CalcMethod.TEST_PRESSURE) {
@@ -91,8 +98,8 @@ object PdfGenerator {
 
         drawTextAt1("%.2f".format(WellKillCalculator.maxAllowableDensity(input)), 1100f, 770f)
         drawTextAt1("%.2f".format(WellKillCalculator.mdudkp(input)), 1120f, 1023f)
-        drawTextAt1("%.2f".format(input.currentMudDensity),
-                            drawTextAt1("%.2f".format(input.currentMudDensity), 1790f, 815f)
+
+        drawTextAt1("%.2f".format(input.currentMudDensity), 1790f, 815f)
         drawTextAt1("%.0f".format(input.casingShoeMD), 1780f, 1155f)
         drawTextAt1("%.0f".format(input.casingShoeTVD), 1780f, 1235f)
         drawTextAt1("%.0f".format(input.wellDepthMD), 1780f, 1540f)
@@ -209,8 +216,10 @@ object PdfGenerator {
         }
 
         fun drawTextAt2(text: String, x: Float, y: Float, paint: Paint = textPaint2) {
-            val pdfX = (x / compressRatio2) * scale2 + offsetX2
-            val pdfY = (y / compressRatio2) * scale2 + offsetY2 + (pdfFontSize2 * 0.35f)
+            val adjustedX = x / compressRatio2
+            val adjustedY = y / compressRatio2
+            val pdfX = adjustedX * scale2 + offsetX2
+            val pdfY = adjustedY * scale2 + offsetY2 + (pdfFontSize2 * 0.35f)
             canvas.drawText(text, pdfX, pdfY, paint)
         }
 
@@ -218,7 +227,9 @@ object PdfGenerator {
         
         // Шапка
         drawTextAt2(input.date, 1900f, 155f)
-        if (input.engineer.isNotEmpty()) drawTextAt2(input.engineer, 1900f, 230f)
+        if (input.engineer.isNotEmpty()) {
+            drawTextAt2(input.engineer, 1900f, 230f)
+        }
 
         // Приток
         drawTextAt2("%.1f".format(input.sidpp), 680f, 435f)
@@ -257,7 +268,7 @@ object PdfGenerator {
         // Снижение давления
         drawTextAt2("%.3f".format(WellKillCalculator.pressureDropPer100Strokes(input)), 1600f, 1250f)
 
-        // Таблица 30 строк
+        // Таблица 30 строк (шаг 59f)
         val schedule = WellKillCalculator.pressureSchedule(input, maxRows = 30)
         val startX_Strokes = 270f
         val startX_Pressure = 500f
@@ -329,7 +340,7 @@ object PdfGenerator {
         // Линия падения давления
         canvas.drawLine(toPdfX(gLeft), toPdfY(safeStartY), toPdfX(safeEndX), toPdfY(safeEndY), linePaint)
 
-        // Горизонтальная линия (плато) от Ркон до 2400 ходов
+        // 🚀 Горизонтальная линия (плато) от Ркон до 2400 ходов
         val endOfLineStrokes = 2400f
         val plateauEndX = gLeft + (endOfLineStrokes / maxStrokes) * (gRight - gLeft)
         val safePlateauX = plateauEndX.coerceIn(gLeft, gRight)
