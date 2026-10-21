@@ -238,27 +238,30 @@ object PdfGenerator {
         drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 750f, 1100f) 
         drawTextAt2("%.1f".format(input.pumpPressure), 1000f, 1100f) 
 
-        // Формула Рнач
+        // Формула Рнач (давление прокачки + давление стабилизации)
         drawTextAt2("%.1f".format(input.pumpPressure), 740f, 855f)
-        drawTextAt2("%.1f".format(input.sidpp), 880f, 855f)
+        drawTextAt2("%.1f".format(input.sidpp), 980f, 855f) // Сдвинуто правее
 
-        // Строка (К) = Рнач - Ркон (равномерно распределено)
-        drawTextAt2(" = ", 400f, 1230f)
-        drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 550f, 1230f)
-        drawTextAt2("-", 680f, 1230f)
-        drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 830f, 1230f)
-        drawTextAt2(" = ", 920f, 1230f)
-        drawTextAt2("%.1f".format(WellKillCalculator.pressureDifferenceK(input)), 1050f, 1230f)
+        // Плотность раствора в скважине (добавлена)
+        drawTextAt2("%.2f".format(input.currentMudDensity), 750f, 1150f)
+
+        // Строка (К) = Рнач - Ркон (компактно)
+        drawTextAt2("=", 420f, 1230f)
+        drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 520f, 1230f)
+        drawTextAt2("-", 620f, 1230f)
+        drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 720f, 1230f)
+        drawTextAt2("=", 820f, 1230f)
+        drawTextAt2("%.1f".format(WellKillCalculator.pressureDifferenceK(input)), 920f, 1230f)
 
         // Снижение давления
         drawTextAt2("%.3f".format(WellKillCalculator.pressureDropPer100Strokes(input)), 1600f, 1250f)
 
-        // Таблица 30 строк (шаг 57f)
+        // Таблица 30 строк (шаг увеличен до 59f)
         val schedule = WellKillCalculator.pressureSchedule(input, maxRows = 30)
         val startX_Strokes = 270f
         val startX_Pressure = 500f
         val startY = 1580f
-        val stepY = 57f 
+        val stepY = 59f 
 
         for (i in 0 until 30) {
             val rowY = startY + i * stepY
@@ -325,8 +328,8 @@ object PdfGenerator {
         // Линия падения давления
         canvas.drawLine(toPdfX(gLeft), toPdfY(safeStartY), toPdfX(safeEndX), toPdfY(safeEndY), linePaint)
 
-        // 🚀 Горизонтальная линия (плато) от Ркон до 2000 ходов
-        val endOfLineStrokes = 2000f
+        // 🚀 Горизонтальная линия (плато) от Ркон до 2400 ходов
+        val endOfLineStrokes = 2400f
         val plateauEndX = gLeft + (endOfLineStrokes / maxStrokes) * (gRight - gLeft)
         val safePlateauX = plateauEndX.coerceIn(gLeft, gRight)
         canvas.drawLine(toPdfX(safeEndX), toPdfY(safeEndY), toPdfX(safePlateauX), toPdfY(safeEndY), linePaint)
