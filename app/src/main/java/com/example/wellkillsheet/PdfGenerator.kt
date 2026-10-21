@@ -15,8 +15,6 @@ object PdfGenerator {
 
     private const val PAGE_WIDTH = 595
     private const val PAGE_HEIGHT = 842
-
-    // Размер шрифта
     private const val BASE_FONT_SIZE = 40f
 
     private const val ORIGINAL_PAGE1_WIDTH = 2550f
@@ -28,9 +26,7 @@ object PdfGenerator {
         
         var scale = 1
         if (options.outWidth > targetWidth) {
-            while (options.outWidth / scale > targetWidth * 2) {
-                scale *= 2
-            }
+            while (options.outWidth / scale > targetWidth * 2) scale *= 2
         }
         options.inSampleSize = scale
         options.inJustDecodeBounds = false
@@ -70,24 +66,33 @@ object PdfGenerator {
         }
 
         fun drawTextAt1(text: String, x: Float, y: Float, paint: Paint = textPaint1) {
-            val adjustedX = x / compressRatio1
-            val adjustedY = y / compressRatio1
-            val pdfX = adjustedX * scale1 + offsetX1
-            val pdfY = adjustedY * scale1 + offsetY1 + (pdfFontSize1 * 0.35f)
+            val pdfX = (x / compressRatio1) * scale1 + offsetX1
+            val pdfY = (y / compressRatio1) * scale1 + offsetY1 + (pdfFontSize1 * 0.35f)
             canvas.drawText(text, pdfX, pdfY, paint)
         }
 
         // === ДАННЫЕ СТРАНИЦЫ 1 ===
         drawTextAt1(input.date, 2005f, 135f)
-        if (input.engineer.isNotEmpty()) {
-            drawTextAt1(input.engineer, 2005f, 210f)
+        if (input.engineer.isNotEmpty()) drawTextAt1(input.engineer, 2005f, 210f)
+
+        // Правка 3: Оставляем (A) и (B) пустыми, если выбран градиент
+        if (input.calcMethod == CalcMethod.TEST_PRESSURE) {
+            drawTextAt1("%.1f".format(input.testPressureA), 1100f, 530f)
+            drawTextAt1("%.2f".format(input.testDensityB), 1100f, 607f)
         }
-        drawTextAt1("%.1f".format(input.testPressureA), 1100f, 530f)
-        drawTextAt1("%.2f".format(input.testDensityB), 1100f, 607f)
+
+        // Правка 1 и 2: Выводим градиент, если выбран он и он меньше 0.1
+        if (input.calcMethod == CalcMethod.FRAC_PRESSURE_OR_GRAD) {
+            if (input.fracValue < 0.1) {
+                drawTextAt1("Градиент гидроразрыва, МПа/м", 500f, 1085f)
+                drawTextAt1("%.4f".format(input.fracValue), 1110f, 1085f)
+            }
+        }
+
         drawTextAt1("%.2f".format(WellKillCalculator.maxAllowableDensity(input)), 1100f, 770f)
         drawTextAt1("%.2f".format(WellKillCalculator.mdudkp(input)), 1120f, 1023f)
-
-        drawTextAt1("%.2f".format(input.currentMudDensity), 1790f, 815f)
+        drawTextAt1("%.2f".format(input.currentMudDensity),
+                            drawTextAt1("%.2f".format(input.currentMudDensity), 1790f, 815f)
         drawTextAt1("%.0f".format(input.casingShoeMD), 1780f, 1155f)
         drawTextAt1("%.0f".format(input.casingShoeTVD), 1780f, 1235f)
         drawTextAt1("%.0f".format(input.wellDepthMD), 1780f, 1540f)
@@ -97,17 +102,17 @@ object PdfGenerator {
         drawTextAt1("%.1f".format(input.pumpPressure), 700f, 1650f)
         drawTextAt1("%.0f".format(input.pumpRate), 280f, 1650f)
 
-        // Таблица объемов
+        // Таблица объемов (левая часть)
         drawTextAt1("%.0f".format(WellKillCalculator.dpLength(input)), 900f, 1981f)
-        drawTextAt1("%.2f".format(input.dpCapacity), 1135f, 1981f) 
+        drawTextAt1("%.2f".format(input.dpCapacity), 1135f, 1981f)
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.dpVolumeRaw(input)).toString(), 1415f, 1981f)
         
         drawTextAt1("%.0f".format(input.hwdpLength), 900f, 2065f)
-        drawTextAt1("%.2f".format(input.hwdpCapacity), 1135f, 2065f) 
+        drawTextAt1("%.2f".format(input.hwdpCapacity), 1135f, 2065f)
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.hwdpVolumeRaw(input)).toString(), 1415f, 2065f)
         
         drawTextAt1("%.0f".format(input.bhaLength), 900f, 2140f)
-        drawTextAt1("%.2f".format(input.bhaCapacity), 1135f, 2140f) 
+        drawTextAt1("%.2f".format(input.bhaCapacity), 1135f, 2140f)
         drawTextAt1(WellKillCalculator.roundUpInt(WellKillCalculator.bhaVolumeRaw(input)).toString(), 1415f, 2140f)
 
         // (D) и (E)
@@ -204,10 +209,8 @@ object PdfGenerator {
         }
 
         fun drawTextAt2(text: String, x: Float, y: Float, paint: Paint = textPaint2) {
-            val adjustedX = x / compressRatio2
-            val adjustedY = y / compressRatio2
-            val pdfX = adjustedX * scale2 + offsetX2
-            val pdfY = adjustedY * scale2 + offsetY2 + (pdfFontSize2 * 0.35f)
+            val pdfX = (x / compressRatio2) * scale2 + offsetX2
+            val pdfY = (y / compressRatio2) * scale2 + offsetY2 + (pdfFontSize2 * 0.35f)
             canvas.drawText(text, pdfX, pdfY, paint)
         }
 
@@ -215,9 +218,7 @@ object PdfGenerator {
         
         // Шапка
         drawTextAt2(input.date, 1900f, 155f)
-        if (input.engineer.isNotEmpty()) {
-            drawTextAt2(input.engineer, 1900f, 230f)
-        }
+        if (input.engineer.isNotEmpty()) drawTextAt2(input.engineer, 1900f, 230f)
 
         // Приток
         drawTextAt2("%.1f".format(input.sidpp), 680f, 435f)
@@ -238,14 +239,14 @@ object PdfGenerator {
         drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 750f, 1100f) 
         drawTextAt2("%.1f".format(input.pumpPressure), 1000f, 1100f) 
 
-        // Формула Рнач (давление прокачки + давление стабилизации)
+        // Формула Рнач
         drawTextAt2("%.1f".format(input.pumpPressure), 740f, 855f)
-        drawTextAt2("%.1f".format(input.sidpp), 980f, 855f) // Сдвинуто правее
+        drawTextAt2("%.1f".format(input.sidpp), 980f, 855f)
 
-        // Плотность раствора в скважине (добавлена)
+        // Плотность раствора в скважине
         drawTextAt2("%.2f".format(input.currentMudDensity), 750f, 1150f)
 
-        // Строка (К) = Рнач - Ркон (компактно)
+        // Строка (К) = Рнач - Ркон
         drawTextAt2("=", 420f, 1230f)
         drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 520f, 1230f)
         drawTextAt2("-", 620f, 1230f)
@@ -256,7 +257,7 @@ object PdfGenerator {
         // Снижение давления
         drawTextAt2("%.3f".format(WellKillCalculator.pressureDropPer100Strokes(input)), 1600f, 1250f)
 
-        // Таблица 30 строк (шаг увеличен до 59f)
+        // Таблица 30 строк
         val schedule = WellKillCalculator.pressureSchedule(input, maxRows = 30)
         val startX_Strokes = 270f
         val startX_Pressure = 500f
@@ -328,7 +329,7 @@ object PdfGenerator {
         // Линия падения давления
         canvas.drawLine(toPdfX(gLeft), toPdfY(safeStartY), toPdfX(safeEndX), toPdfY(safeEndY), linePaint)
 
-        // 🚀 Горизонтальная линия (плато) от Ркон до 2400 ходов
+        // Горизонтальная линия (плато) от Ркон до 2400 ходов
         val endOfLineStrokes = 2400f
         val plateauEndX = gLeft + (endOfLineStrokes / maxStrokes) * (gRight - gLeft)
         val safePlateauX = plateauEndX.coerceIn(gLeft, gRight)
