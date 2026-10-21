@@ -232,29 +232,33 @@ object PdfGenerator {
         drawTextAt2("%.2f".format(tvdDenominator), 1120f, 660f)
 
         // Результаты и данные
-        drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 2100f, 640f) // Плотность глушения (возвращено)
-        drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 2100f, 860f) // Рнач (добавлено)
-        drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 2100f, 1120f) // Ркон (добавлено)
-        drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 750f, 1100f) // Плотность глушения (добавлено)
-        drawTextAt2("%.1f".format(input.pumpPressure), 1000f, 1100f) // Давление прокачки (добавлено)
+        drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 2100f, 640f) 
+        drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 2100f, 860f) 
+        drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 2100f, 1120f) 
+        drawTextAt2("%.2f".format(WellKillCalculator.killMudDensity(input)), 750f, 1100f) 
+        drawTextAt2("%.1f".format(input.pumpPressure), 1000f, 1100f) 
 
-        // Строка (К) = Рнач - Ркон
-        drawTextAt2(" = ", 460f, 1230f)
-        drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 600f, 1230f)
-        drawTextAt2("-", 690f, 1230f)
-        drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 730f, 1230f)
-        drawTextAt2(" = ", 870f, 1230f)
-        drawTextAt2("%.1f".format(WellKillCalculator.pressureDifferenceK(input)), 940f, 1230f)
+        // Формула Рнач
+        drawTextAt2("%.1f".format(input.pumpPressure), 740f, 855f)
+        drawTextAt2("%.1f".format(input.sidpp), 880f, 855f)
+
+        // Строка (К) = Рнач - Ркон (равномерно распределено)
+        drawTextAt2(" = ", 400f, 1230f)
+        drawTextAt2("%.1f".format(WellKillCalculator.initialCirculatingPressure(input)), 550f, 1230f)
+        drawTextAt2("-", 680f, 1230f)
+        drawTextAt2("%.1f".format(WellKillCalculator.finalCirculatingPressure(input)), 830f, 1230f)
+        drawTextAt2(" = ", 920f, 1230f)
+        drawTextAt2("%.1f".format(WellKillCalculator.pressureDifferenceK(input)), 1050f, 1230f)
 
         // Снижение давления
         drawTextAt2("%.3f".format(WellKillCalculator.pressureDropPer100Strokes(input)), 1600f, 1250f)
 
-        // Таблица 30 строк (шаг увеличен на 2 пикселя: 56 + 2 = 58f)
+        // Таблица 30 строк (шаг 57f)
         val schedule = WellKillCalculator.pressureSchedule(input, maxRows = 30)
         val startX_Strokes = 270f
         val startX_Pressure = 500f
         val startY = 1580f
-        val stepY = 58f 
+        val stepY = 57f 
 
         for (i in 0 until 30) {
             val rowY = startY + i * stepY
@@ -318,7 +322,14 @@ object PdfGenerator {
         val safeEndX = endPxX.coerceIn(gLeft, gRight)
         val safeEndY = endPxY.coerceIn(gTop, gBottom)
 
+        // Линия падения давления
         canvas.drawLine(toPdfX(gLeft), toPdfY(safeStartY), toPdfX(safeEndX), toPdfY(safeEndY), linePaint)
+
+        // 🚀 Горизонтальная линия (плато) от Ркон до 2000 ходов
+        val endOfLineStrokes = 2000f
+        val plateauEndX = gLeft + (endOfLineStrokes / maxStrokes) * (gRight - gLeft)
+        val safePlateauX = plateauEndX.coerceIn(gLeft, gRight)
+        canvas.drawLine(toPdfX(safeEndX), toPdfY(safeEndY), toPdfX(safePlateauX), toPdfY(safeEndY), linePaint)
 
         document.finishPage(page)
 
