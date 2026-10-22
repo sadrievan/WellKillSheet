@@ -18,7 +18,7 @@ android {
     signingConfigs {
         create("release") {
             // Берем данные из GitHub Secrets
-            storeFile = file(System.getenv("KEYSTORE_FILE") ?: "../release-key.jks")
+            storeFile = rootProject.file("release-key.jks")
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS")
             keyPassword = System.getenv("KEY_PASSWORD")
